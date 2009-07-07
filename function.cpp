@@ -1,9 +1,13 @@
 #include "function.h"
 
-function::function()
-{
-}
+namespace Freefoil{
+	namespace Private{
 
-function::~function()
-{
+		function::function(){
+		}
+		
+		function::~function(){
+		}
+
+	}
 }

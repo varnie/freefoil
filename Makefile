@@ -1,8 +1,12 @@
-main: main.o
-	g++ -o freefoil main.o
-    main.o: main.cpp 
-	g++ -c main.cpp -I/usr/local/include/	
+CCC=g++
+
+STANDARD_INC = /usr/local/include/
+INCDIRS   = -I${STANDARD_INC}
+CFLAGS    = ${INCDIRS}
+
+freefoil: main.o
+	$(CCC) ${CFLAGS} -o freefoil main.cpp script.cpp -I/usr/local/include/
+all:
+	${MAKE} freefoil
 clean:
-	rm *.o
-all:	
-	${MAKE} main
+	-rm *.o

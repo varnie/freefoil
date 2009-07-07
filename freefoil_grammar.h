@@ -9,14 +9,30 @@
 #include <boost/spirit/tree/ast.hpp>
 
 
-#define GRAMMAR_RULE(RULE_ID) \
-rule<ScannerT, parser_context<>, parser_tag<RULE_ID> >
+#define GRAMMAR_RULE(RULE_ID) rule<ScannerT, parser_context<>, parser_tag<RULE_ID> >
 
 namespace Freefoil {
 	namespace Private {
-		using namespace std;
-		using namespace BOOST_SPIRIT_CLASSIC_NS;
 		
+		using BOOST_SPIRIT_CLASSIC_NS::symbols;
+		using BOOST_SPIRIT_CLASSIC_NS::distinct_parser;
+		using BOOST_SPIRIT_CLASSIC_NS::grammar;
+		using BOOST_SPIRIT_CLASSIC_NS::rule;
+		using BOOST_SPIRIT_CLASSIC_NS::parser_context;
+		using BOOST_SPIRIT_CLASSIC_NS::lexeme_d;
+		using BOOST_SPIRIT_CLASSIC_NS::token_node_d;
+		using BOOST_SPIRIT_CLASSIC_NS::parser_id;
+		using BOOST_SPIRIT_CLASSIC_NS::space_p;
+		using BOOST_SPIRIT_CLASSIC_NS::list_p;
+		using BOOST_SPIRIT_CLASSIC_NS::ch_p;
+		using BOOST_SPIRIT_CLASSIC_NS::parser_tag;
+		using BOOST_SPIRIT_CLASSIC_NS::no_node_d;
+		using BOOST_SPIRIT_CLASSIC_NS::eps_p;
+		using BOOST_SPIRIT_CLASSIC_NS::alpha_p;
+		using BOOST_SPIRIT_CLASSIC_NS::alnum_p;
+		using BOOST_SPIRIT_CLASSIC_NS::discard_node_d;
+		using BOOST_SPIRIT_CLASSIC_NS::tree_parse_info;
+				
 		struct freefoil_keywords : symbols<int>{
 			freefoil_keywords(){
 				add

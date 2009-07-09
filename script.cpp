@@ -56,14 +56,76 @@ namespace Freefoil{
 		}	
 	}
 	
-	void script::parse(const Private::iter_t &iter){	
+	void script::parse(const iter_t &iter){	
 		//TODO:
 		std::cout << "parsing begin" << std::endl;
-		parser_id id = iter->value.id();
+		const parser_id id = iter->value.id();
 		std::cout << "id = " << id.to_long();
+		assert(id == freefoil_grammar::script_ID || id == freefoil_grammar::func_decl_ID || id == freefoil_grammar::func_impl_ID);
+		switch (id.to_long()){
+			case freefoil_grammar::script_ID:
+				parse_script(iter->children.begin());
+				break;
+			case freefoil_grammar::func_decl_ID:
+				parse_func_decl(iter);
+				break;
+			case freefoil_grammar::func_impl_ID:
+				parse_func_impl(iter);
+				break;
+			default:
+				break;	
+		}
+		
 		std::cout << "parsing end" << std::endl;
 	}
 	
 	script::script(){
+	}
+	
+	void script::parse_script(const iter_t &iter){
+		//TODO:
+	}
+	
+	void script::parse_func_decl(const iter_t &iter){
+		//TODO:
+	}
+	
+	void script::parse_func_impl(const iter_t &iter){
+		assert(iter->value.id() == freefoil_grammar::func_impl_ID);
+		parse_func_head(iter->children.begin());
+		//TODO: save parsed decl somewhere
+		parse_func_body(iter->children.begin()+1);
+	}
+	
+	void script::parse_func_head(const iter_t &iter){
+		//TODO:
+		assert(iter->value.id() == freefoil_grammar::func_head_ID);
+		assert(iter->children.size() == 2);
+		assert((iter->children.begin())->value.id() == freefoil_grammar::func_type_ID);
+		function::E_FUNCTION_TYPE func_type;
+		//const node_t node = *(iter->children.begin());
+		const std::string func_type_as_str(parse_str(iter->children.begin()));
+		if (func_type_as_str == "void"){
+			func_type = function::voidType;
+		}else if (func_type_as_str == "string"){
+			func_type = function::stringType;
+		}else if (func_type_as_str == "int"){
+			func_type = function::intType;
+		}else if (func_type_as_str == "float"){
+			func_type = function::floatType;
+		}else{
+			assert(func_type_as_str == "bool");
+			func_type = function::floatType;
+		}
+		std::cout << func_type;
+	}
+	
+	void script::parse_func_body(const iter_t &iter){
+		assert(iter->value.id() == freefoil_grammar::func_body_ID);
+		//TODO:
+	}
+	
+	std::string script::parse_str(const iter_t &iter){
+		return std::string(iter->value.begin(), iter->value.end());
 	}
 }

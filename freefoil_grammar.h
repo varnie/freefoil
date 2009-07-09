@@ -5,7 +5,7 @@
 #include <boost/spirit/include/classic_symbols.hpp>
 #include <boost/spirit/include/classic_distinct.hpp>
 #include <boost/spirit/utility/lists.hpp>
-
+#include <boost/spirit/tree/parse_tree.hpp>
 #include <boost/spirit/tree/ast.hpp>
 
 
@@ -32,6 +32,9 @@ namespace Freefoil {
 		using BOOST_SPIRIT_CLASSIC_NS::alnum_p;
 		using BOOST_SPIRIT_CLASSIC_NS::discard_node_d;
 		using BOOST_SPIRIT_CLASSIC_NS::tree_parse_info;
+		using BOOST_SPIRIT_CLASSIC_NS::gen_pt_node_d;
+		using BOOST_SPIRIT_CLASSIC_NS::gen_ast_node_d;
+		using BOOST_SPIRIT_CLASSIC_NS::inner_node_d;
 				
 		struct freefoil_keywords : symbols<int>{
 			freefoil_keywords(){
@@ -71,8 +74,7 @@ namespace Freefoil {
 			struct definition{
 				definition(freefoil_grammar const &/*self*/){
 					
-					script = 
-							*(func_decl | func_impl) >> no_node_d[eps_p];
+					script = *(func_decl | func_impl) >> no_node_d[eps_p];
 						
 					ident = lexeme_d[
 										token_node_d[
@@ -80,18 +82,17 @@ namespace Freefoil {
 											-  
 											freefoil_keywords_p
 										]
-									] 
-									;
+									];
 				
 					stmt_end = discard_node_d[ch_p(';')];
 				
 					func_decl = func_head >> stmt_end;				
 					
-					func_impl = func_head >> discard_node_d[ch_p('{')] >> func_body >> discard_node_d[ch_p('}')];  
+					func_impl = func_head >> gen_pt_node_d[func_body];  
 					
-					func_head = func_type >> ident >> discard_node_d[ch_p('(')] >> !params_list >> discard_node_d[ch_p(')')];
+					func_head = func_type >> ident >> inner_node_d[ch_p('(') >> !params_list >> ch_p(')')];
 					
-					func_body = *stmt;
+					func_body = gen_ast_node_d[no_node_d[ch_p('{')] >> *stmt >> no_node_d[ch_p('}')]];
 					
 					func_type = keyword_p("string") | keyword_p("void") | keyword_p("float") | keyword_p("int") | keyword_p("bool");
 					

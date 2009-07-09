@@ -14,6 +14,12 @@ namespace Freefoil {
 		function_shared_ptr_list_t funcs_list;
 	private:
 		void parse(const iter_t &iter);
+		void parse_script(const iter_t &iter);
+		void parse_func_decl(const iter_t &iter);
+		void parse_func_impl(const iter_t &iter);
+		void parse_func_head(const iter_t &iter);
+		void parse_func_body(const iter_t &iter);
+		static std::string parse_str(const iter_t &iter);
 	public:
 		script();
 		void exec();

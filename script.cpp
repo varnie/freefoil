@@ -1,5 +1,7 @@
 #include "script.h"
 #include "freefoil_grammar.h"
+#include "freefoil_defs.h"
+
 #include <iostream>
 
 #if defined(BOOST_SPIRIT_DUMP_PARSETREE_AS_XML)
@@ -22,7 +24,7 @@ namespace Freefoil{
 				iterator_t iter_begin = str.begin();
 				iterator_t iter_end = str.end();
 				
-				tree_parse_info<iterator_t> info = ast_parse(iter_begin, iter_end, grammar, space_p);
+				tree_parse_info_t info = ast_parse(iter_begin, iter_end, grammar, space_p);
 				if (info.full){
 					std::cout << "succeeded" << std::endl;
 						
@@ -97,10 +99,57 @@ namespace Freefoil{
 		parse_func_body(iter->children.begin()+1);
 	}
 	
+	param_shared_ptr_t script::parse_func_param(const iter_t &iter){
+		assert(iter->value.id() == freefoil_grammar::param_ID);
+		
+		value::E_VALUE_TYPE val_type;
+		bool is_ref = false;
+		std::string val_name = "";
+		
+		const std::string val_type_as_str(parse_str(iter->children.begin()));
+		
+		if (val_type_as_str == "int"){
+			val_type = value::intType;
+		}else if (val_type_as_str == "float"){
+			val_type = value::floatType;
+		}else if (val_type_as_str == "bool"){
+			val_type = value::boolType;
+		}else{
+			assert(val_type_as_str == "string");
+			val_type = value::stringType;
+		}
+		
+		iter_t cur_iter = iter->children.begin() + 1;
+		const iter_t iter_end = iter->children.end();
+		if (cur_iter != iter_end){
+			if (cur_iter->value.id() == freefoil_grammar::ref_ID){
+				is_ref = true;
+				++cur_iter;	
+			}
+			if (cur_iter != iter_end){
+				if (cur_iter->value.id() == freefoil_grammar::ident_ID){
+					val_name = parse_str(cur_iter);
+					++cur_iter;	
+				}	
+			}
+		}
+		assert(cur_iter == iter_end);
+		return param_shared_ptr_t(new param(val_type, is_ref, val_name));
+	}
+	
+	void script::parse_func_params_list(const iter_t &iter){
+		assert(iter->value.id() == freefoil_grammar::params_list_ID);
+		//TODO:
+		params_shared_ptr_list_t params_list(iter->children.size());
+		for (iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter){
+			 params_list.push_back(parse_func_param(cur_iter));
+		}	
+	}
+	
 	void script::parse_func_head(const iter_t &iter){
 		//TODO:
 		assert(iter->value.id() == freefoil_grammar::func_head_ID);
-		assert(iter->children.size() == 2);
+		assert(iter->children.size() == 3);
 		assert((iter->children.begin())->value.id() == freefoil_grammar::func_type_ID);
 		function::E_FUNCTION_TYPE func_type;
 		//const node_t node = *(iter->children.begin());
@@ -117,7 +166,11 @@ namespace Freefoil{
 			assert(func_type_as_str == "bool");
 			func_type = function::floatType;
 		}
-		std::cout << func_type;
+		std::cout << "func_type: " << func_type;
+		
+		const std::string func_name(parse_str(iter->children.begin()+1));
+		parse_func_params_list(iter->children.begin()+2);
+		//TODO:
 	}
 	
 	void script::parse_func_body(const iter_t &iter){

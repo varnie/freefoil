@@ -35,6 +35,7 @@ namespace Freefoil {
 		using BOOST_SPIRIT_CLASSIC_NS::gen_pt_node_d;
 		using BOOST_SPIRIT_CLASSIC_NS::gen_ast_node_d;
 		using BOOST_SPIRIT_CLASSIC_NS::inner_node_d;
+		using BOOST_SPIRIT_CLASSIC_NS::infix_node_d;
 				
 		struct freefoil_keywords : symbols<int>{
 			freefoil_keywords(){
@@ -90,19 +91,25 @@ namespace Freefoil {
 					
 					func_impl = func_head >> gen_pt_node_d[func_body];  
 					
-					func_head = func_type >> ident >> inner_node_d[ch_p('(') >> !params_list >> ch_p(')')];
+					func_head = func_type >> ident >> gen_pt_node_d[params_list];
 					
 					func_body = gen_ast_node_d[no_node_d[ch_p('{')] >> *stmt >> no_node_d[ch_p('}')]];
 					
 					func_type = keyword_p("string") | keyword_p("void") | keyword_p("float") | keyword_p("int") | keyword_p("bool");
 					
-					params_list = list_p(param, no_node_d[ch_p(',')]);
+					params_list = no_node_d[ch_p('(')] 
+						>>!(param >> *(no_node_d[ch_p(',')] >> param))
+					    >> no_node_d[ch_p(')')];
+					
+					param = var_type >> !ref >> !ident;
+					
+					ref = keyword_p("ref"); 
 					
 					var_type = keyword_p("string") | keyword_p("float") | keyword_p("int") | keyword_p("bool");
 					
 					param = var_type >> !ref >> !ident;
 					
-					ref = discard_node_d[keyword_p("ref")];
+					ref = keyword_p("ref");
 					
 					stmt = stmt_end; //TODO: add other alternatives
 					

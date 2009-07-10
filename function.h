@@ -2,6 +2,7 @@
 #define FUNCTION_H_
 
 #include "value.h"
+#include "param.h"
 #include <list>
 #include <boost/shared_ptr.hpp>
 
@@ -12,10 +13,7 @@ namespace Freefoil {
 		using boost::shared_ptr;
 
 		class function{
-			class Arg{
-			};
-			typedef  std::list<Arg> args_t;
-		public:
+		public:			
 			enum E_FUNCTION_TYPE{
 				intType,
 				floatType,
@@ -23,15 +21,14 @@ namespace Freefoil {
 				stringType,
 				voidType
 			};
-			
-			function(const E_FUNCTION_TYPE func_type, const args_t &args_list)
-				:func_type_(func_type), args_list_(args_list)
+			function(const E_FUNCTION_TYPE func_type, const params_shared_ptr_list_t &params_list)
+				:func_type_(func_type), params_list_(params_list)
 			{}
 			virtual ~function();
 		private:
 			private:
 			E_FUNCTION_TYPE func_type_;
-			args_t args_list_;
+			params_shared_ptr_list_t params_list_;
 		};
 		
 		typedef shared_ptr<function> function_shared_ptr_t;

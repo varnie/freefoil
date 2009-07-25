@@ -4,12 +4,14 @@
 #include "value.h"
 #include "param.h"
 #include <list>
+#include <string>
 #include <boost/shared_ptr.hpp>
 
 namespace Freefoil {
 	namespace Private {
 
 		using std::list;
+		using std::string;
 		using boost::shared_ptr;
 
 		class function{
@@ -21,14 +23,24 @@ namespace Freefoil {
 				stringType,
 				voidType
 			};
-			function(const E_FUNCTION_TYPE func_type, const params_shared_ptr_list_t &params_list)
-				:func_type_(func_type), params_list_(params_list)
+			function(const string &name, const E_FUNCTION_TYPE func_type, const params_shared_ptr_list_t &params_list = params_shared_ptr_list_t())
+				:name_(name), func_type_(func_type), params_list_(params_list)
 			{}
-			virtual ~function();
+			virtual ~function(){}
+			const std::string &get_name() const{
+				return name_;
+			}
+			const E_FUNCTION_TYPE get_type() const{
+				return func_type_;
+			}
+			const params_shared_ptr_list_t &get_params() const{
+				return params_list_;
+			}
 		private:
-			private:
+			string name_;
 			E_FUNCTION_TYPE func_type_;
 			params_shared_ptr_list_t params_list_;
+
 		};
 		
 		typedef shared_ptr<function> function_shared_ptr_t;

@@ -98,7 +98,7 @@ namespace Freefoil {
 					func_type = keyword_p("string") | keyword_p("void") | keyword_p("float") | keyword_p("int") | keyword_p("bool");
 					
 					params_list = no_node_d[ch_p('(')] 
-						>>!(param >> *(no_node_d[ch_p(',')] >> param))
+						>>!(gen_pt_node_d[param] >> *(no_node_d[ch_p(',')] >> gen_pt_node_d[param]))
 					    >> no_node_d[ch_p(')')];
 					
 					param = var_type >> !ref >> !ident;

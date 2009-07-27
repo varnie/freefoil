@@ -69,6 +69,8 @@ namespace Freefoil {
 			func_type_ID,
 			var_type_ID,
 			stmt_ID,
+			var_assign_stmt_list_ID,
+			expr_ID
 		};
 		
 			template <typename ScannerT>
@@ -111,13 +113,14 @@ namespace Freefoil {
 					
 					ref = keyword_p("ref");
 					
-					stmt = stmt_end; //TODO: add other alternatives
+					var_assign_stmt_list = var_type >> (ident >> !(ch_p('=') >> expr)) >> *(no_node_d[ch_p(',')] >> (ident >> !(ch_p('=') >> expr))) >> stmt_end;
 					
-					 // turn on the debugging info.
-		            BOOST_SPIRIT_DEBUG_RULE(integer);
-		            BOOST_SPIRIT_DEBUG_RULE(factor);
-		            BOOST_SPIRIT_DEBUG_RULE(term);
-		            BOOST_SPIRIT_DEBUG_RULE(expression);
+					expr = ident;
+					
+					stmt = stmt_end | var_assign_stmt_list; //TODO: add other alternatives
+					
+					// turn on the debugging info.
+		            //BOOST_SPIRIT_DEBUG_RULE(script);
 				}	
 												
 				GRAMMAR_RULE(script_ID) const &start() const{
@@ -138,6 +141,8 @@ namespace Freefoil {
 				GRAMMAR_RULE(var_type_ID) var_type;
 				GRAMMAR_RULE(ref_ID) ref;
 				GRAMMAR_RULE(stmt_ID) stmt;
+				GRAMMAR_RULE(var_assign_stmt_list_ID) var_assign_stmt_list;
+				GRAMMAR_RULE(expr_ID) expr;
 			};
 		};
 	}

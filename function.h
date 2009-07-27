@@ -23,8 +23,9 @@ namespace Freefoil {
 				stringType,
 				voidType
 			};
+			
 			function(const string &name, const E_FUNCTION_TYPE func_type, const params_shared_ptr_list_t &params_list = params_shared_ptr_list_t())
-				:name_(name), func_type_(func_type), params_list_(params_list)
+				:name_(name), func_type_(func_type), params_list_(params_list)/*, body_()*/
 			{}
 			virtual ~function(){}
 			const std::string &get_name() const{
@@ -36,11 +37,22 @@ namespace Freefoil {
 			const params_shared_ptr_list_t &get_params() const{
 				return params_list_;
 			}
+			
+			//TODO:
+			bool is_implemented() const{
+				return true; //body_ != NULL;
+			}
+			
+			//TODO:
+			void set_body(/*std::list<AST*> body*/){
+				//body_ = body;
+			}
+			
 		private:
 			string name_;
 			E_FUNCTION_TYPE func_type_;
 			params_shared_ptr_list_t params_list_;
-
+			//std::list<AST*> body_;
 		};
 		
 		typedef shared_ptr<function> function_shared_ptr_t;

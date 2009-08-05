@@ -1,9 +1,9 @@
 #include "script.h"
 
-int main(){
+int main() {
 
-	Freefoil::script s;
-	s.exec();
-	
-	return 0;
+    Freefoil::script s;
+    s.exec();
+
+    return 0;
 }

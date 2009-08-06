@@ -67,7 +67,7 @@ namespace Freefoil{
         rule_names[freefoil_grammar::func_type_ID] = "func_type";
         rule_names[freefoil_grammar::params_list_ID] = "params_list";
         rule_names[freefoil_grammar::stmt_ID] = "stmt";
-        rule_names[freefoil_grammar::var_assign_stmt_list_ID] = "var_assign_stmt_list";
+        rule_names[freefoil_grammar::var_declare_stmt_list_ID] = "var_declare_stmt_list";
        	rule_names[freefoil_grammar::expr_ID] = "expr";
        	rule_names[freefoil_grammar::term_ID] = "term";
        	rule_names[freefoil_grammar::factor_ID] = "factor";
@@ -79,7 +79,7 @@ namespace Freefoil{
         rule_names[freefoil_grammar::bool_relation_ID] = "bool_relation";
         rule_names[freefoil_grammar::quoted_string_ID] = "quoted_string";
         rule_names[freefoil_grammar::func_call_ID] = "func_call";
-
+        rule_names[freefoil_grammar::invoke_args_list_ID] = "invoke_args_list";
 
         tree_to_xml(std::cerr,
         			info.trees,

@@ -6,6 +6,7 @@
 #include <list>
 #include <string>
 #include <boost/shared_ptr.hpp>
+#include "freefoil_defs.h"
 
 namespace Freefoil {
 	namespace Private {
@@ -25,7 +26,7 @@ namespace Freefoil {
 			};
 
 			function(const string &name, const E_FUNCTION_TYPE func_type, const params_shared_ptr_list_t &params_list = params_shared_ptr_list_t())
-				:name_(name), func_type_(func_type), params_list_(params_list)/*, body_()*/
+				:name_(name), func_type_(func_type), params_list_(params_list), has_body_(false)
 			{}
 			virtual ~function(){}
 			const std::string &get_name() const{
@@ -38,21 +39,21 @@ namespace Freefoil {
 				return params_list_;
 			}
 
-			//TODO:
-			bool is_implemented() const{
-				return true; //body_ != NULL;
+			bool has_body() const{
+				return has_body_;
 			}
 
-			//TODO:
-			void set_body(/*std::list<AST*> body*/){
-				//body_ = body;
+			void set_body(const iter_t &iter){
+				iter_body_ = iter;
+				has_body_ = true;
 			}
 
 		private:
 			string name_;
 			E_FUNCTION_TYPE func_type_;
 			params_shared_ptr_list_t params_list_;
-			//std::list<AST*> body_;
+			iter_t iter_body_;
+			bool has_body_;
 		};
 
 		typedef shared_ptr<function> function_shared_ptr_t;

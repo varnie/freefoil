@@ -1,12 +1,12 @@
-#ifndef FUNCTION_H_
-#define FUNCTION_H_
+#ifndef FUNCTION_DESCRIPTOR_H_INCLUDED
+#define FUNCTION_DESCRIPTOR_H_INCLUDED
 
-#include "value.h"
-#include "param.h"
 #include <list>
 #include <string>
-#include <boost/shared_ptr.hpp>
 #include "freefoil_defs.h"
+#include "value_descriptor.h"
+#include "param.h"
+#include <boost/shared_ptr.hpp>
 
 namespace Freefoil {
 	namespace Private {
@@ -15,7 +15,7 @@ namespace Freefoil {
 		using std::string;
 		using boost::shared_ptr;
 
-		class function{
+		class function_descriptor{
 		public:
 			enum E_FUNCTION_TYPE{
 				intType,
@@ -25,10 +25,10 @@ namespace Freefoil {
 				voidType
 			};
 
-			function(const string &name, const E_FUNCTION_TYPE func_type, const params_shared_ptr_list_t &params_list = params_shared_ptr_list_t())
+			function_descriptor(const string &name, const E_FUNCTION_TYPE func_type, const params_shared_ptr_list_t &params_list = params_shared_ptr_list_t())
 				:name_(name), func_type_(func_type), params_list_(params_list), has_body_(false)
 			{}
-			virtual ~function(){}
+
 			const std::string &get_name() const{
 				return name_;
 			}
@@ -56,9 +56,9 @@ namespace Freefoil {
 			bool has_body_;
 		};
 
-		typedef shared_ptr<function> function_shared_ptr_t;
+		typedef shared_ptr<function_descriptor> function_shared_ptr_t;
 		typedef list<function_shared_ptr_t> function_shared_ptr_list_t;
 	}
 }
 
-#endif /*FUNCTION_H_*/
+#endif // FUNCTION_DESCRIPTOR_H_INCLUDED

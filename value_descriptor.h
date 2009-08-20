@@ -1,10 +1,10 @@
-#ifndef VALUE_H_
-#define VALUE_H_
+#ifndef VALUE_DESCRIPTOR_H_INCLUDED
+#define VALUE_DESCRIPTOR_H_INCLUDED
 
 namespace Freefoil {
 	namespace Private {
-		
-		class value{
+
+		class value_descriptor{
 			public:
 				enum E_VALUE_TYPE{
 					intType,
@@ -20,13 +20,14 @@ namespace Freefoil {
 					bool bool_value_;
 					//TODO: add char  *pChar_value_;
 				} value_;
-				
+
 			public:
-				value(const E_VALUE_TYPE value_type)
+				value_descriptor(const E_VALUE_TYPE value_type)
 					:value_type_(value_type)
 					{}
-				virtual ~value();
+				virtual ~value_descriptor();
 			};
 	}
 }
-#endif /*VALUE_H_*/
+
+#endif // VALUE_DESCRIPTOR_H_INCLUDED

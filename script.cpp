@@ -150,9 +150,9 @@ namespace Freefoil {
 
     script::script() {
         params_shared_ptr_list_t params;
-        params.push_back(param_shared_ptr_t(new param(value::intType, false, "i")));
-        core_funcs_list_.push_back(function_shared_ptr_t (new function("foo", function::voidType, params)));
-        //	core_funcs_list_.push_back(function_shared_ptr_t(new function("foo", function::voidType)));
+        params.push_back(param_shared_ptr_t(new param(value_descriptor::intType, false, "i")));
+        core_funcs_list_.push_back(function_shared_ptr_t (new function_descriptor("foo", function_descriptor::voidType, params)));
+        //	core_funcs_list_.push_back(function_shared_ptr_t(new function_descriptor("foo", function::voidType)));
         //TODO: add all core funcs
     }
 
@@ -221,21 +221,21 @@ namespace Freefoil {
     param_shared_ptr_t script::parse_func_param(const iter_t &iter) {
         assert(iter->value.id() == freefoil_grammar::param_ID);
 
-        value::E_VALUE_TYPE val_type;
+        value_descriptor::E_VALUE_TYPE val_type;
         bool is_ref = false;
         std::string val_name = "";
 
         const std::string val_type_as_str(parse_str(iter->children.begin()));
 
         if (val_type_as_str == "int") {
-            val_type = value::intType;
+            val_type = value_descriptor::intType;
         } else if (val_type_as_str == "float") {
-            val_type = value::floatType;
+            val_type = value_descriptor::floatType;
         } else if (val_type_as_str == "bool") {
-            val_type = value::boolType;
+            val_type = value_descriptor::boolType;
         } else {
             assert(val_type_as_str == "string");
-            val_type = value::stringType;
+            val_type = value_descriptor::stringType;
         }
 
         iter_t cur_iter = iter->children.begin() + 1;
@@ -270,24 +270,24 @@ namespace Freefoil {
         assert(iter->value.id() == freefoil_grammar::func_head_ID);
         assert(iter->children.size() == 3);
         assert((iter->children.begin())->value.id() == freefoil_grammar::func_type_ID);
-        function::E_FUNCTION_TYPE func_type;
+        function_descriptor::E_FUNCTION_TYPE func_type;
 
         const std::string func_type_as_str(parse_str(iter->children.begin()));
         if (func_type_as_str == "void") {
-            func_type = function::voidType;
+            func_type = function_descriptor::voidType;
         } else if (func_type_as_str == "string") {
-            func_type = function::stringType;
+            func_type = function_descriptor::stringType;
         } else if (func_type_as_str == "int") {
-            func_type = function::intType;
+            func_type = function_descriptor::intType;
         } else if (func_type_as_str == "float") {
-            func_type = function::floatType;
+            func_type = function_descriptor::floatType;
         } else {
             assert(func_type_as_str == "bool");
-            func_type = function::floatType;
+            func_type = function_descriptor::floatType;
         }
         std::cout << "func_type: " << func_type;
 
-        const function_shared_ptr_t parsed_func = function_shared_ptr_t(new function(parse_str(iter->children.begin()+1), func_type, parse_func_params_list(iter->children.begin()+2)));
+        const function_shared_ptr_t parsed_func = function_shared_ptr_t(new function_descriptor(parse_str(iter->children.begin()+1), func_type, parse_func_params_list(iter->children.begin()+2)));
 
         if (std::find_if(
                     core_funcs_list_.begin(),

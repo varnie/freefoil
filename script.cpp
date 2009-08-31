@@ -88,6 +88,8 @@ namespace Freefoil {
                 rule_names[freefoil_grammar::quoted_string_ID] = "quoted_string";
                 rule_names[freefoil_grammar::func_call_ID] = "func_call";
                 rule_names[freefoil_grammar::invoke_args_list_ID] = "invoke_args_list";
+                rule_names[freefoil_grammar::block_ID] = "block";
+                rule_names[freefoil_grammar::var_declare_tail_ID] = "var_declare_tail";
 
                 tree_to_xml(std::cerr,
                             info.trees,
@@ -124,7 +126,7 @@ namespace Freefoil {
 
             //now we have all user-defined function heads parsed, as well as each user-defined function must has an iterator to its body tree structure (not parsed yet)
             //and we must have parsed "main" entry point function (with stored iterator on its body tree structure in it)
-            //check this:
+            //check this firstly:
             const function_shared_ptr_list_t::const_iterator invalid_function_iter
             = std::find_if(
                   funcs_list_.begin(),
@@ -141,6 +143,14 @@ namespace Freefoil {
                         boost::bind(&entry_point_functor, _1)) == funcs_list_.end()) {
                 throw freefoil_exception("entry point not declared");
             }
+
+            //now we have all function declarations valid and we are sure we have "main" entry point function
+            //it is a time for parsing function's bodies and generate intermediate code
+            for (function_shared_ptr_list_t::const_iterator cur_iter = funcs_list_.begin(), iter_end = funcs_list_.end(); cur_iter != iter_end; ++cur_iter) {
+                parse_func_body((*cur_iter)->get_body());
+            }
+
+            //TODO:
         } catch (const freefoil_exception &e) {
             std::cout << "catched: " << e.what() << std::endl;
         }
@@ -148,7 +158,7 @@ namespace Freefoil {
         std::cout << "parsing end" << std::endl;
     }
 
-    script::script() {
+    script::script()  {
         params_shared_ptr_list_t params;
         params.push_back(param_shared_ptr_t(new param(value_descriptor::intType, false, "i")));
         core_funcs_list_.push_back(function_shared_ptr_t (new function_descriptor("foo", function_descriptor::voidType, params)));
@@ -211,7 +221,7 @@ namespace Freefoil {
                 throw freefoil_exception("previous declaration differs from this one only by \"ref(s)\"");
             }
             old_func->set_body(iter->children.begin()+1);
-        }else{
+        } else {
             //it is completely new function
             parsed_func->set_body(iter->children.begin()+1);
             funcs_list_.push_back(parsed_func);
@@ -283,7 +293,7 @@ namespace Freefoil {
             func_type = function_descriptor::floatType;
         } else {
             assert(func_type_as_str == "bool");
-            func_type = function_descriptor::floatType;
+            func_type = function_descriptor::boolType;
         }
         std::cout << "func_type: " << func_type;
 
@@ -299,13 +309,56 @@ namespace Freefoil {
         return parsed_func;
     }
 
+    void script::parse_stmt(const iter_t &iter) {
+
+        const parser_id id = iter->value.id();
+        switch (id.to_long()) {
+        case freefoil_grammar::block_ID:{
+            scope_stack_.begin_scope();
+            parse_stmt(iter->children.begin());
+            scope_stack_.end_scope();
+            break;
+        }
+        case freefoil_grammar::var_declare_stmt_list_ID:{
+            const std::string var_type_as_str(parse_str(iter->children.begin()));
+            value_descriptor::E_VALUE_TYPE var_type;
+            //TODO: add checking for other possible types
+            if (var_type_as_str == "string") {
+                var_type = value_descriptor::stringType;
+            } else if (var_type_as_str == "int") {
+                var_type = value_descriptor::intType;
+            } else if (var_type_as_str == "float") {
+                var_type = value_descriptor::floatType;
+            } else {
+                assert(var_type_as_str == "bool");
+                var_type = value_descriptor::boolType;
+            }
+            for (iter_t cur_iter = iter->children.begin() + 1, iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter){
+                //parse var decl
+                const std::string var_name(parse_str(cur_iter->children.begin()));
+                const std::size_t bucket_index = symbol_table_.insert(var_name, value_descriptor(var_type));
+                scope_stack_.push_bucket_index(bucket_index);
+                //TODO: generate an instruction
+            }
+            break;
+        }
+            //TODO: check for other stmts
+        default:
+            break;
+        }
+    }
+
     void script::parse_func_body(const iter_t &iter) {
+        symbol_table_ = symbol_table();
+        scope_stack_.attach_symbol_table(&symbol_table_);
+
         assert(iter->value.id() == freefoil_grammar::func_body_ID);
-        //TODO:
+        for (iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter) {
+            parse_stmt(cur_iter);
+        }
     }
 
     std::string script::parse_str(const iter_t &iter) {
         return std::string(iter->value.begin(), iter->value.end());
     }
-
 }

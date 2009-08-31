@@ -1,6 +1,7 @@
 #ifndef FUNCTION_DESCRIPTOR_H_INCLUDED
 #define FUNCTION_DESCRIPTOR_H_INCLUDED
 
+#include <vector>
 #include <list>
 #include <string>
 #include "freefoil_defs.h"
@@ -13,6 +14,7 @@ namespace Freefoil {
 
 		using std::list;
 		using std::string;
+		using std::vector;
 		using boost::shared_ptr;
 
 		class function_descriptor{
@@ -48,12 +50,18 @@ namespace Freefoil {
 				has_body_ = true;
 			}
 
+			iter_t get_body() const{
+			    return iter_body_;
+			}
+
 		private:
 			string name_;
 			E_FUNCTION_TYPE func_type_;
 			params_shared_ptr_list_t params_list_;
 			iter_t iter_body_;
 			bool has_body_;
+            typedef vector<size_t> bytecode_stream;
+            bytecode_stream bytecode_stream_;
 		};
 
 		typedef shared_ptr<function_descriptor> function_shared_ptr_t;

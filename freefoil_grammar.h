@@ -106,7 +106,9 @@ namespace Freefoil {
                 bool_relation_ID,
                 quoted_string_ID,
                 func_call_ID,
-                invoke_args_list_ID
+                invoke_args_list_ID,
+                block_ID,
+                var_declare_tail_ID
             };
 
             template <typename ScannerT>
@@ -149,7 +151,9 @@ namespace Freefoil {
 
                     ref = keyword_p("ref");
 
-                    var_declare_stmt_list = var_type >> (ident >> !(ch_p("=") >> gen_pt_node_d[bool_expr])) >> *(no_node_d[ch_p(',')] >> ident >> !(ch_p("=") >> gen_pt_node_d[bool_expr])) >> stmt_end;
+                    var_declare_stmt_list = var_type >> var_declare_tail >> *(no_node_d[ch_p(',')] >> var_declare_tail) >> stmt_end;
+
+                    var_declare_tail = ident >> !(discard_node_d[ch_p("=")] >> gen_pt_node_d[bool_expr]);
 
                     bool_expr = bool_term >> *(root_node_d[str_p("or")] >> bool_term);
 
@@ -182,7 +186,12 @@ namespace Freefoil {
                                           |
                                           real_p]];
 
-                    stmt = stmt_end | var_declare_stmt_list; //TODO: add other alternatives
+                    stmt =
+                        stmt_end |
+                        var_declare_stmt_list |
+                        gen_pt_node_d[block]; //TODO: add other alternatives
+
+                    block = gen_ast_node_d[no_node_d[ch_p('{')] >> *stmt >> no_node_d[ch_p('}')]];
 
                     // example of turning on the debugging info.
                     BOOST_SPIRIT_DEBUG_RULE(script);
@@ -217,7 +226,9 @@ namespace Freefoil {
                 GRAMMAR_RULE(bool_relation_ID) bool_relation;
                 GRAMMAR_RULE(quoted_string_ID) quoted_string;
                 GRAMMAR_RULE(func_call_ID) func_call;
-                 GRAMMAR_RULE(invoke_args_list_ID) invoke_args_list;
+                GRAMMAR_RULE(invoke_args_list_ID) invoke_args_list;
+                GRAMMAR_RULE(block_ID) block;
+                GRAMMAR_RULE(var_declare_tail_ID) var_declare_tail;
             };
         };
     }

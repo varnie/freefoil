@@ -25,7 +25,8 @@ namespace Freefoil {
 				value_descriptor(const E_VALUE_TYPE value_type)
 					:value_type_(value_type)
 					{}
-				virtual ~value_descriptor();
+				~value_descriptor(){
+				}
 			};
 	}
 }

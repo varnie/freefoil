@@ -17,13 +17,17 @@ namespace Freefoil {
     using Private::iter_t;
     using Private::symbol_table;
     using Private::scope_stack;
-
+    using Private::function_descriptor;
+    using Private::OPCODE_KIND;
 
     class script {
+
         function_shared_ptr_list_t core_funcs_list_;
         function_shared_ptr_list_t funcs_list_;
-        symbol_table symbol_table_;
-        scope_stack scope_stack_;
+        symbol_table curr_symbol_table_;
+        scope_stack curr_scope_stack_;
+        function_shared_ptr_t curr_parsing_function;
+        std::size_t var_position_;
     private:
         void parse(const iter_t &iter);
         void parse_script(const iter_t &iter);

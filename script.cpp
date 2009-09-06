@@ -2,6 +2,7 @@
 #include "freefoil_grammar.h"
 #include "freefoil_defs.h"
 #include "exceptions.h"
+#include "opcodes.h"
 
 #include <iostream>
 #include <list>
@@ -16,6 +17,8 @@
 namespace Freefoil {
 
     using namespace Private;
+
+    tree_parse_info_t build_AST(const iterator_t &iter_begin, const iterator_t &iter_end);
 
     bool params_types_equal_functor(const param_shared_ptr_t &param, const param_shared_ptr_t &the_param) {
         return 	param->get_value_type() == the_param->get_value_type();
@@ -45,7 +48,6 @@ namespace Freefoil {
 
     void script::exec() {
 
-        freefoil_grammar grammar;
         std::string str;
         while (getline(std::cin, str)) {
             if (str == "q") {
@@ -55,7 +57,7 @@ namespace Freefoil {
             iterator_t iter_begin = str.begin();
             iterator_t iter_end = str.end();
 
-            tree_parse_info_t info = ast_parse(iter_begin, iter_end, grammar, space_p);
+            tree_parse_info_t info = build_AST(iter_begin, iter_end);
             if (info.full) {
                 std::cout << "succeeded" << std::endl;
 
@@ -106,8 +108,9 @@ namespace Freefoil {
     }
 
     void script::parse(const iter_t &iter) {
+
+        std::cout << "parsing begin" << std::endl;
         try {
-            std::cout << "parsing begin" << std::endl;
             const parser_id id = iter->value.id();
             assert(id == freefoil_grammar::script_ID || id == freefoil_grammar::func_decl_ID || id == freefoil_grammar::func_impl_ID);
             switch (id.to_long()) {
@@ -137,6 +140,7 @@ namespace Freefoil {
                 throw freefoil_exception("function " + (*invalid_function_iter)->get_name() + " is not implemented");
             }
 
+            //entry point ("main" function) must be declared
             if (std::find_if(
                         funcs_list_.begin(),
                         funcs_list_.end(),
@@ -147,10 +151,13 @@ namespace Freefoil {
             //now we have all function declarations valid and we are sure we have "main" entry point function
             //it is a time for parsing function's bodies and generate intermediate code
             for (function_shared_ptr_list_t::const_iterator cur_iter = funcs_list_.begin(), iter_end = funcs_list_.end(); cur_iter != iter_end; ++cur_iter) {
-                parse_func_body((*cur_iter)->get_body());
+                curr_parsing_function = *cur_iter;
+                parse_func_body(curr_parsing_function->get_body());
             }
 
             //TODO:
+            //
+
         } catch (const freefoil_exception &e) {
             std::cout << "catched: " << e.what() << std::endl;
         }
@@ -159,13 +166,14 @@ namespace Freefoil {
     }
 
     script::script()  {
+
+        //TODO: populate core_funcs_list_ with builtin functions
         params_shared_ptr_list_t params;
         params.push_back(param_shared_ptr_t(new param(value_descriptor::intType, false, "i")));
         core_funcs_list_.push_back(function_shared_ptr_t (new function_descriptor("foo", function_descriptor::voidType, params)));
         //	core_funcs_list_.push_back(function_shared_ptr_t(new function_descriptor("foo", function::voidType)));
         //TODO: add all core funcs
     }
-
     void script::parse_script(const iter_t &iter) {
         for (iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter) {
             if (cur_iter->value.id() == freefoil_grammar::func_decl_ID) {
@@ -178,6 +186,7 @@ namespace Freefoil {
     }
 
     void script::parse_func_decl(const iter_t &iter) {
+
         assert(iter->value.id() == freefoil_grammar::func_decl_ID);
         const function_shared_ptr_t parsed_func = parse_func_head(iter->children.begin());
 
@@ -194,6 +203,7 @@ namespace Freefoil {
     }
 
     void script::parse_func_impl(const iter_t &iter) {
+
         assert(iter->value.id() == freefoil_grammar::func_impl_ID);
         const function_shared_ptr_t parsed_func = parse_func_head(iter->children.begin());
 
@@ -236,7 +246,7 @@ namespace Freefoil {
         std::string val_name = "";
 
         const std::string val_type_as_str(parse_str(iter->children.begin()));
-
+        //TODO: add other function types checking
         if (val_type_as_str == "int") {
             val_type = value_descriptor::intType;
         } else if (val_type_as_str == "float") {
@@ -283,6 +293,7 @@ namespace Freefoil {
         function_descriptor::E_FUNCTION_TYPE func_type;
 
         const std::string func_type_as_str(parse_str(iter->children.begin()));
+        //TODO: add other function types checking
         if (func_type_as_str == "void") {
             func_type = function_descriptor::voidType;
         } else if (func_type_as_str == "string") {
@@ -302,7 +313,7 @@ namespace Freefoil {
         if (std::find_if(
                     core_funcs_list_.begin(),
                     core_funcs_list_.end(),
-                    boost::bind(&function_heads_equal_functor, _1, parsed_func)) != core_funcs_list_.end()) {
+                   boost::bind(&function_heads_equal_functor, _1, parsed_func)) != core_funcs_list_.end()) {
             throw freefoil_exception("unable to override core function");
         }
 
@@ -313,13 +324,13 @@ namespace Freefoil {
 
         const parser_id id = iter->value.id();
         switch (id.to_long()) {
-        case freefoil_grammar::block_ID:{
-            scope_stack_.begin_scope();
+        case freefoil_grammar::block_ID: {
+            curr_scope_stack_.begin_scope();
             parse_stmt(iter->children.begin());
-            scope_stack_.end_scope();
+            curr_scope_stack_.end_scope();
             break;
         }
-        case freefoil_grammar::var_declare_stmt_list_ID:{
+        case freefoil_grammar::var_declare_stmt_list_ID: {
             const std::string var_type_as_str(parse_str(iter->children.begin()));
             value_descriptor::E_VALUE_TYPE var_type;
             //TODO: add checking for other possible types
@@ -333,24 +344,36 @@ namespace Freefoil {
                 assert(var_type_as_str == "bool");
                 var_type = value_descriptor::boolType;
             }
-            for (iter_t cur_iter = iter->children.begin() + 1, iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter){
+            for (iter_t cur_iter = iter->children.begin() + 1, iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter) {
                 //parse var decl
                 const std::string var_name(parse_str(cur_iter->children.begin()));
-                const std::size_t bucket_index = symbol_table_.insert(var_name, value_descriptor(var_type));
-                scope_stack_.push_bucket_index(bucket_index);
-                //TODO: generate an instruction
+                const std::size_t bucket_index = curr_symbol_table_.insert(var_name, value_descriptor(var_type));
+                curr_scope_stack_.push_bucket_index(bucket_index);
+                //generate an instruction
+                curr_parsing_function->add_instruction(instruction(Private::PUSH_SPACE));
+                if (cur_iter->children.begin() + 1 != cur_iter->children.end()){
+                        //it is "= expr"
+                        assert( (*(cur_iter->children.begin() + 1)).value.id() == freefoil_grammar::bool_expr_ID);
+                        //TODO: parse_bool_expr(cur_iter->children.begin() + 1);
+                        //curr_parsing_function->add_instruction(instruction(Private::STORE, var_position_));
+                }
+
             }
             break;
         }
-            //TODO: check for other stmts
+
+        case freefoil_grammar::stmt_end_ID:
+            break;
+        //TODO: check for other stmts
         default:
             break;
         }
     }
 
     void script::parse_func_body(const iter_t &iter) {
-        symbol_table_ = symbol_table();
-        scope_stack_.attach_symbol_table(&symbol_table_);
+
+        curr_symbol_table_ = symbol_table();
+        curr_scope_stack_.attach_symbol_table(&curr_symbol_table_);
 
         assert(iter->value.id() == freefoil_grammar::func_body_ID);
         for (iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter) {
@@ -360,5 +383,12 @@ namespace Freefoil {
 
     std::string script::parse_str(const iter_t &iter) {
         return std::string(iter->value.begin(), iter->value.end());
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////
+    tree_parse_info_t build_AST(const iterator_t &iter_begin, const iterator_t &iter_end) {
+
+        freefoil_grammar grammar;
+        return ast_parse(iter_begin, iter_end, grammar, space_p);
     }
 }

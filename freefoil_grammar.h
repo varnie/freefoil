@@ -151,7 +151,7 @@ namespace Freefoil {
 
                     ref = keyword_p("ref");
 
-                    var_declare_stmt_list = var_type >> var_declare_tail >> *(no_node_d[ch_p(',')] >> var_declare_tail) >> stmt_end;
+                    var_declare_stmt_list = var_type >> gen_pt_node_d[var_declare_tail] >> *(no_node_d[ch_p(',')] >> gen_pt_node_d[var_declare_tail]) >> no_node_d[stmt_end];
 
                     var_declare_tail = ident >> !(discard_node_d[ch_p("=")] >> gen_pt_node_d[bool_expr]);
 

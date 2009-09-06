@@ -46,11 +46,7 @@ namespace Freefoil {
                 for (size_t i = 0; i < SIZE; ++i) {
                     bindings_.push_back(null_binding);
                 }
-            }/*
-            void pop(const string &the_name) {
-                const size_t index = hash(the_name) % SIZE;
-                bindings_[index] = (*bindings_[index]).next_binding_;
-            }*/
+            }
             size_t insert(const string &the_name, const value_descriptor& the_value_descriptor) {
                 const size_t index = hash(the_name);
                 bindings_[index] = binding_shared_ptr(new binding(the_name, the_value_descriptor, bindings_[index]));

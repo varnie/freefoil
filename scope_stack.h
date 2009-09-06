@@ -27,7 +27,7 @@ namespace Freefoil{
                     if (!scopes_.empty()){
                         size_t index;
                         while ((index = scopes_.top()) != SCOPE_BEGIN_MARKER){
-                                //TODO: remove the head of the binding list of the indicated bucket number in symbol table
+                                //remove the head of the binding list of the indicated bucket number in symbol table
                                 psymbol_table_->pop_buckets_head(index);
                                 scopes_.pop();
                         }

@@ -108,7 +108,7 @@ namespace Freefoil {
                 func_call_ID,
                 invoke_args_list_ID,
                 block_ID,
-                var_declare_tail_ID
+                var_declare_tail_ID,
             };
 
             template <typename ScannerT>
@@ -155,16 +155,15 @@ namespace Freefoil {
 
                     var_declare_tail = ident >> !(discard_node_d[ch_p("=")] >> gen_pt_node_d[bool_expr]);
 
-                    bool_expr = bool_term >> *(root_node_d[str_p("or")] >> bool_term);
+                    bool_expr = gen_pt_node_d[bool_term] >> *(root_node_d[str_p("or")] >> gen_pt_node_d[bool_term]);
 
-                    bool_term = bool_factor >> *(root_node_d[str_p("and")] >> bool_factor);
+                    bool_term = gen_pt_node_d[bool_factor] >> *(root_node_d[str_p("and")] >> gen_pt_node_d[bool_factor]);
 
-                    bool_factor = root_node_d[!str_p("not")] >> bool_relation;
+                    bool_factor = !root_node_d[str_p("not")] >> gen_pt_node_d[bool_relation];
 
-                    bool_relation = gen_pt_node_d[expr] >> !(root_node_d[(ch_p(">") | ch_p("<") | str_p("<=") | str_p(">=") | str_p("==") | str_p("!="))] >> gen_pt_node_d[expr]);
+                    bool_relation = !lexeme_d[ch_p("+") | ch_p("-")] >> gen_pt_node_d[expr] >> !(root_node_d[str_p("<=") | str_p(">=") | str_p("==") | str_p("!=") | ch_p(">") | ch_p("<")] >> !(lexeme_d[ch_p("+") | ch_p("-")]) >> gen_pt_node_d[expr]);
 
-                    expr = !(lexeme_d[ch_p("+") | ch_p("-")]) >>
-                             gen_pt_node_d[term] >> *(lexeme_d[root_node_d[ch_p("+") | ch_p("-")]] >> gen_pt_node_d[term]);
+                    expr = gen_pt_node_d[term] >> *(lexeme_d[root_node_d[ch_p("+") | ch_p("-")]] >> gen_pt_node_d[term]);
 
                     term = gen_pt_node_d[factor] >> *(lexeme_d[root_node_d[ch_p("*") | ch_p("/")]] >> gen_pt_node_d[factor]);
 

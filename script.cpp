@@ -370,7 +370,7 @@ namespace Freefoil {
 
         case freefoil_grammar::stmt_end_ID:
             break;
-            //TODO: check for other stmts
+        //TODO: check for other stmts
         default:
             break;
         }
@@ -379,6 +379,8 @@ namespace Freefoil {
     void script::parse_bool_expr(const iter_t &iter){
 
         assert(iter->value.id() == freefoil_grammar::bool_expr_ID);
+        parse_bool_term(iter->children.begin());
+
         //TODO:
     }
 
@@ -386,6 +388,8 @@ namespace Freefoil {
 
         assert(iter->value.id() == freefoil_grammar::expr_ID);
         //TODO:
+        const parser_id id = iter->value.id();
+
     }
 
     void script::parse_term(const iter_t &iter){

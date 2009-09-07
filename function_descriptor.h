@@ -35,9 +35,6 @@ namespace Freefoil {
 			function_descriptor(const string &name, const E_FUNCTION_TYPE func_type, const params_shared_ptr_list_t &params_list = params_shared_ptr_list_t())
 				:name_(name), func_type_(func_type), params_list_(params_list), has_body_(false)
 			{
-			    for (std::size_t i = 0, count = params_list_.size(); i < count; ++i){
-                    bytecode_stream_.push_back(instruction(Private::PUSH_SPACE));
-			    }
             }
 
 			const std::string &get_name() const{
@@ -63,8 +60,12 @@ namespace Freefoil {
 			    return iter_body_;
 			}
 
-			void add_instruction(const instruction &instr){
+			inline void add_instruction(const instruction &instr){
 			    bytecode_stream_.push_back(instr);
+			}
+
+			std::size_t get_params_count() const{
+			    return params_list_.size();
 			}
 
 		private:

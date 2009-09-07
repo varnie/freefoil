@@ -11,6 +11,7 @@ namespace Freefoil {
             PUSH_TRUE,
             PUSH_FALSE,
             PUSH_SPACE, //space for 1 instruction
+            PUSH_VAR,
             STORE_VAR,
             //TODO: add other opcodes
         };
@@ -21,14 +22,13 @@ namespace Freefoil {
                 float f_;
                 int i_;
                 char *pChar_;
-                void *pRef_;
+                void *pObj_;
             };
-            instruction(OPCODE_KIND op):op_(op) {}
+            explicit instruction(OPCODE_KIND op):op_(op) {}
             instruction(OPCODE_KIND op, float f):op_(op), f_(f) {}
             instruction(OPCODE_KIND op, int i):op_(op), i_(i) {}
             instruction(OPCODE_KIND op, char *pChar):op_(op), pChar_(pChar) {}
         };
-
     }
 }
 

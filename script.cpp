@@ -18,7 +18,7 @@ namespace Freefoil {
 
     using namespace Private;
 
-    tree_parse_info_t build_AST(const iterator_t &iter_begin, const iterator_t &iter_end);
+    static tree_parse_info_t build_AST(const iterator_t &iter_begin, const iterator_t &iter_end);
 
     bool params_types_equal_functor(const param_shared_ptr_t &param, const param_shared_ptr_t &the_param) {
         return 	param->get_value_type() == the_param->get_value_type();
@@ -53,6 +53,8 @@ namespace Freefoil {
             if (str == "q") {
                 break;
             }
+
+            funcs_list_.clear();
 
             iterator_t iter_begin = str.begin();
             iterator_t iter_end = str.end();
@@ -157,7 +159,6 @@ namespace Freefoil {
 
             //TODO:
             //
-
         } catch (const freefoil_exception &e) {
             std::cout << "catched: " << e.what() << std::endl;
         }
@@ -174,7 +175,9 @@ namespace Freefoil {
         //	core_funcs_list_.push_back(function_shared_ptr_t(new function_descriptor("foo", function::voidType)));
         //TODO: add all core funcs
     }
+
     void script::parse_script(const iter_t &iter) {
+
         for (iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter) {
             if (cur_iter->value.id() == freefoil_grammar::func_decl_ID) {
                 parse_func_decl(cur_iter);
@@ -234,6 +237,7 @@ namespace Freefoil {
         } else {
             //it is completely new function
             parsed_func->set_body(iter->children.begin()+1);
+        std::cout <<  "func_body_iter type = " << (*(iter->children.begin()+1)).value.id().to_long() << std::endl;
             funcs_list_.push_back(parsed_func);
         }
     }
@@ -277,6 +281,7 @@ namespace Freefoil {
     }
 
     params_shared_ptr_list_t script::parse_func_params_list(const iter_t &iter) {
+
         assert(iter->value.id() == freefoil_grammar::params_list_ID);
         params_shared_ptr_list_t params_list;
         for (iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter) {
@@ -313,7 +318,7 @@ namespace Freefoil {
         if (std::find_if(
                     core_funcs_list_.begin(),
                     core_funcs_list_.end(),
-                   boost::bind(&function_heads_equal_functor, _1, parsed_func)) != core_funcs_list_.end()) {
+                    boost::bind(&function_heads_equal_functor, _1, parsed_func)) != core_funcs_list_.end()) {
             throw freefoil_exception("unable to override core function");
         }
 
@@ -349,28 +354,85 @@ namespace Freefoil {
                 const std::string var_name(parse_str(cur_iter->children.begin()));
                 const std::size_t bucket_index = curr_symbol_table_.insert(var_name, value_descriptor(var_type));
                 curr_scope_stack_.push_bucket_index(bucket_index);
+                ++var_position_;
                 //generate an instruction
                 curr_parsing_function->add_instruction(instruction(Private::PUSH_SPACE));
-                if (cur_iter->children.begin() + 1 != cur_iter->children.end()){
-                        //it is "= expr"
-                        assert( (*(cur_iter->children.begin() + 1)).value.id() == freefoil_grammar::bool_expr_ID);
-                        //TODO: parse_bool_expr(cur_iter->children.begin() + 1);
-                        //curr_parsing_function->add_instruction(instruction(Private::STORE, var_position_));
-                }
+                if (cur_iter->children.begin() + 1 != cur_iter->children.end()) {
+                    //it is an assign expr
+                    parse_bool_expr(cur_iter->children.begin() + 1);
 
+                    curr_parsing_function->add_instruction(instruction(Private::PUSH_VAR, var_position_));
+                    curr_parsing_function->add_instruction(instruction(Private::STORE_VAR));
+                }
             }
             break;
         }
 
         case freefoil_grammar::stmt_end_ID:
             break;
-        //TODO: check for other stmts
+            //TODO: check for other stmts
         default:
             break;
         }
     }
 
+    void script::parse_bool_expr(const iter_t &iter){
+
+        assert(iter->value.id() == freefoil_grammar::bool_expr_ID);
+        //TODO:
+    }
+
+    void script::parse_expr(const iter_t &iter){
+
+        assert(iter->value.id() == freefoil_grammar::expr_ID);
+        //TODO:
+    }
+
+    void script::parse_term(const iter_t &iter){
+
+        assert(iter->value.id() == freefoil_grammar::term_ID);
+        //TODO:
+    }
+
+    void script::parse_factor(const iter_t &iter){
+
+        assert(iter->value.id() == freefoil_grammar::factor_ID);
+        //TODO:
+    }
+
+    void script::parse_bool_term(const iter_t &iter){
+
+        assert(iter->value.id() == freefoil_grammar::bool_term_ID);
+        //TODO:
+    }
+
+    void script::parse_bool_factor(const iter_t &iter){
+
+        assert(iter->value.id() == freefoil_grammar::bool_factor_ID);
+        //TODO:
+    }
+
+    void script::parse_bool_relation(const iter_t &iter){
+
+        assert(iter->value.id() == freefoil_grammar::bool_relation_ID);
+        //TODO:
+    }
+
+    void script::parse_number(const iter_t &iter){
+
+        assert(iter->value.id() == freefoil_grammar::number_ID);
+        //TODO:
+    }
+
+     void script::parse_quoted_string(const iter_t &iter){
+
+        assert(iter->value.id() == freefoil_grammar::quoted_string_ID);
+        //TODO:
+    }
+
     void script::parse_func_body(const iter_t &iter) {
+
+        var_position_ = curr_parsing_function->get_params_count();
 
         curr_symbol_table_ = symbol_table();
         curr_scope_stack_.attach_symbol_table(&curr_symbol_table_);
@@ -386,9 +448,7 @@ namespace Freefoil {
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////
-    tree_parse_info_t build_AST(const iterator_t &iter_begin, const iterator_t &iter_end) {
-
-        freefoil_grammar grammar;
-        return ast_parse(iter_begin, iter_end, grammar, space_p);
+    static tree_parse_info_t build_AST(const iterator_t &iter_begin, const iterator_t &iter_end) {
+        return ast_parse(iter_begin, iter_end, freefoil_grammar(), space_p);
     }
 }

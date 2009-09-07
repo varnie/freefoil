@@ -161,7 +161,7 @@ namespace Freefoil {
 
                     bool_factor = root_node_d[!str_p("not")] >> bool_relation;
 
-                    bool_relation = expr >> !(root_node_d[(ch_p(">") | ch_p("<") | str_p("<=") | str_p(">=") | str_p("==") | str_p("!="))] >> expr);
+                    bool_relation = gen_pt_node_d[expr] >> !(root_node_d[(ch_p(">") | ch_p("<") | str_p("<=") | str_p(">=") | str_p("==") | str_p("!="))] >> gen_pt_node_d[expr]);
 
                     expr = !(lexeme_d[ch_p("+") | ch_p("-")]) >>
                              gen_pt_node_d[term] >> *(lexeme_d[root_node_d[ch_p("+") | ch_p("-")]] >> gen_pt_node_d[term]);

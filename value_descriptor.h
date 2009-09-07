@@ -18,7 +18,7 @@ namespace Freefoil {
 					int int_value_;
 					float float_value_;
 					bool bool_value_;
-					//TODO: add char  *pChar_value_;
+					char *pChar_value_;
 				} value_;
 
 			public:

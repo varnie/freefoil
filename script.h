@@ -27,7 +27,7 @@ namespace Freefoil {
         symbol_table curr_symbol_table_;
         scope_stack curr_scope_stack_;
         function_shared_ptr_t curr_parsing_function;
-        std::size_t var_position_;
+        int var_position_;
     private:
         void parse(const iter_t &iter);
         void parse_script(const iter_t &iter);
@@ -39,6 +39,15 @@ namespace Freefoil {
         param_shared_ptr_t parse_func_param(const iter_t &iter);
         static std::string parse_str(const iter_t &iter);
         void parse_stmt(const iter_t &iter);
+        void parse_expr(const iter_t &iter);
+        void parse_term(const iter_t &iter);
+        void parse_factor(const iter_t &iter);
+        void parse_bool_expr(const iter_t &iter);
+        void parse_bool_term(const iter_t &iter);
+        void parse_bool_factor(const iter_t &iter);
+        void parse_bool_relation(const iter_t &iter);
+        void parse_number(const iter_t &iter);
+        void parse_quoted_string(const iter_t &iter);
     public:
         script();
         void exec();

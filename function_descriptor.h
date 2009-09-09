@@ -9,6 +9,7 @@
 #include <vector>
 #include <list>
 #include <string>
+#include <iostream>
 #include <boost/shared_ptr.hpp>
 
 
@@ -23,6 +24,9 @@ namespace Freefoil {
 		class function_descriptor{
 		public:
             typedef vector<instruction> bytecode_stream_t;
+            typedef vector<int> int_table_t;
+            typedef vector<float> float_table_t;
+            typedef vector<string> string_table_t;
 
 			enum E_FUNCTION_TYPE{
 				intType,
@@ -68,12 +72,42 @@ namespace Freefoil {
 			    return params_list_.size();
 			}
 
+			void add_int_constant(const int i){
+			    if (std::count(int_table_.begin(), int_table_.end(), i) == 0){
+                        int_table_.push_back(i);
+			    }
+			}
+
+            void add_float_constant(const float f){
+			    if (std::count(float_table_.begin(), float_table_.end(), f) == 0){
+                        float_table_.push_back(f);
+			    }
+			}
+
+			std::size_t get_index_of_int_constant(const int i) const{
+                    assert(std::count(int_table_.begin(), int_table_.end(), i) == 1);
+                    return *std::find(int_table_.begin(), int_table_.end(), i);
+			}
+
+			void print_bytecode_stream() const{
+                    std::cout << "bytecode: ";
+                    for (bytecode_stream_t::const_iterator iter = bytecode_stream_.begin(), iter_end = bytecode_stream_.end(); iter != iter_end; ++iter){
+                        std::cout << *iter;
+                    }
+                    std::cout << std::endl;
+			}
+
 		private:
 			string name_;
 			E_FUNCTION_TYPE func_type_;
 			params_shared_ptr_list_t params_list_;
 			iter_t iter_body_;
 			bool has_body_;
+
+			int_table_t int_table_;
+			float_table_t float_table_;
+			string_table_t string_table;
+
             bytecode_stream_t bytecode_stream_;
 		};
 

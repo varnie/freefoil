@@ -109,6 +109,13 @@ namespace Freefoil {
                 invoke_args_list_ID,
                 block_ID,
                 var_declare_tail_ID,
+                assign_op_ID,
+                cmp_op_ID,
+                or_tail_ID,
+                and_tail_ID,
+                relation_tail_ID,
+                plus_minus_op_ID,
+                mult_divide_op_ID,
             };
 
             template <typename ScannerT>
@@ -153,24 +160,38 @@ namespace Freefoil {
 
                     var_declare_stmt_list = var_type >> gen_pt_node_d[var_declare_tail] >> *(no_node_d[ch_p(',')] >> gen_pt_node_d[var_declare_tail]) >> no_node_d[stmt_end];
 
-                    var_declare_tail = ident >> !(discard_node_d[ch_p("=")] >> gen_pt_node_d[bool_expr]);
+                    var_declare_tail = ident >> !(assign_op >> gen_pt_node_d[bool_expr]);
 
-                    bool_expr = gen_pt_node_d[bool_term] >> *(root_node_d[str_p("or")] >> gen_pt_node_d[bool_term]);
+                    assign_op = ch_p("=") | str_p("+=") | str_p("-=") | str_p("*=") | str_p("/=");
 
-                    bool_term = gen_pt_node_d[bool_factor] >> *(root_node_d[str_p("and")] >> gen_pt_node_d[bool_factor]);
+                    cmp_op = str_p("<=") | str_p(">=") | str_p("==") | str_p("!=") | ch_p(">") | ch_p("<");
 
-                    bool_factor = !root_node_d[str_p("not")] >> gen_pt_node_d[bool_relation];
+                    bool_expr = gen_pt_node_d[bool_term] >> or_tail;
 
-                    bool_relation = !lexeme_d[ch_p("+") | ch_p("-")] >> gen_pt_node_d[expr] >> !(root_node_d[str_p("<=") | str_p(">=") | str_p("==") | str_p("!=") | ch_p(">") | ch_p("<")] >> !(lexeme_d[ch_p("+") | ch_p("-")]) >> gen_pt_node_d[expr]);
+                    or_tail = *(str_p("or") >> gen_pt_node_d[bool_term]);
 
-                    expr = gen_pt_node_d[term] >> *(lexeme_d[root_node_d[ch_p("+") | ch_p("-")]] >> gen_pt_node_d[term]);
+                    bool_term = gen_pt_node_d[bool_factor] >> and_tail;
 
-                    term = gen_pt_node_d[factor] >> *(lexeme_d[root_node_d[ch_p("*") | ch_p("/")]] >> gen_pt_node_d[factor]);
+                    and_tail = *(str_p("and") >> gen_pt_node_d[bool_factor]);
+
+                    bool_factor = !str_p("not") >> gen_pt_node_d[bool_relation];
+
+                    bool_relation = gen_pt_node_d[expr] >> relation_tail;
+
+                    relation_tail = *(cmp_op >> gen_pt_node_d[expr]);
+
+                    expr = !plus_minus_op >> gen_pt_node_d[term] >> *(plus_minus_op >> gen_pt_node_d[term]);
+
+                    plus_minus_op = lexeme_d[ch_p("+") | ch_p("-")];
+
+                    term = gen_pt_node_d[factor] >> *(mult_divide_op >> gen_pt_node_d[factor]);
+
+                    mult_divide_op = lexeme_d[ch_p("*") | ch_p("/")];
 
                     factor = func_call
                              | ident
                              | number
-                             | (no_node_d[ch_p('(')] >> expr >> no_node_d[ch_p(')')])
+                             | no_node_d[ch_p('(')] >> bool_expr >> no_node_d[ch_p(')')]
                              | keyword_p("true") | keyword_p("false")
                              | quoted_string
                     ;
@@ -179,11 +200,9 @@ namespace Freefoil {
 
                     func_call = ident >> gen_pt_node_d[invoke_args_list];
 
-                    invoke_args_list = no_node_d[ch_p('(')] >> !(gen_pt_node_d[expr] >> *(no_node_d[ch_p(',')] >> gen_pt_node_d[expr]))  >> no_node_d[ch_p(')')];
+                    invoke_args_list = no_node_d[ch_p('(')] >> !(gen_pt_node_d[bool_expr] >> *(no_node_d[ch_p(',')] >> gen_pt_node_d[bool_expr]))  >> no_node_d[ch_p(')')];
 
-                    number = token_node_d[longest_d[uint_p
-                                          |
-                                          real_p]];
+                    number = token_node_d[longest_d[uint_p | real_p]];
 
                     stmt =
                         stmt_end |
@@ -228,6 +247,13 @@ namespace Freefoil {
                 GRAMMAR_RULE(invoke_args_list_ID) invoke_args_list;
                 GRAMMAR_RULE(block_ID) block;
                 GRAMMAR_RULE(var_declare_tail_ID) var_declare_tail;
+                GRAMMAR_RULE(assign_op_ID) assign_op;
+                GRAMMAR_RULE(cmp_op_ID) cmp_op;
+                GRAMMAR_RULE(or_tail_ID) or_tail;
+                GRAMMAR_RULE(and_tail_ID) and_tail;
+                GRAMMAR_RULE(relation_tail_ID) relation_tail;
+                GRAMMAR_RULE(plus_minus_op_ID) plus_minus_op;
+                GRAMMAR_RULE(mult_divide_op_ID) mult_divide_op;
             };
         };
     }

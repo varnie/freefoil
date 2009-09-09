@@ -27,7 +27,7 @@ namespace Freefoil {
         symbol_table curr_symbol_table_;
         scope_stack curr_scope_stack_;
         function_shared_ptr_t curr_parsing_function;
-        int var_position_;
+        int stack_offset_;
     private:
         void parse(const iter_t &iter);
         void parse_script(const iter_t &iter);
@@ -47,6 +47,8 @@ namespace Freefoil {
         void parse_bool_factor(const iter_t &iter);
         void parse_bool_relation(const iter_t &iter);
         void parse_number(const iter_t &iter);
+        void parse_or_tail(const iter_t &iter);
+        void parse_and_tail(const iter_t &iter);
         void parse_quoted_string(const iter_t &iter);
     public:
         script();

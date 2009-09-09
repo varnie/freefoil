@@ -14,17 +14,14 @@ namespace Freefoil {
 				};
 			private:
 				E_VALUE_TYPE value_type_;
-				union {
-					int int_value_;
-					float float_value_;
-					bool bool_value_;
-					char *pChar_value_;
-				} value_;
-
+                int stack_offset_;
 			public:
-				value_descriptor(const E_VALUE_TYPE value_type)
-					:value_type_(value_type)
+				value_descriptor(const E_VALUE_TYPE value_type, const int stack_offset)
+					:value_type_(value_type), stack_offset_(stack_offset)
 					{}
+                int get_stack_offset() const{
+                    return stack_offset_;
+                }
 			};
 	}
 }

@@ -10,6 +10,7 @@
 #include <list>
 #include <string>
 #include <iostream>
+#include <algorithm>
 #include <boost/shared_ptr.hpp>
 
 
@@ -72,15 +73,21 @@ namespace Freefoil {
 			    return params_list_.size();
 			}
 
-			void add_int_constant(const int i){
+			std::size_t add_int_constant(const int i){
 			    if (std::count(int_table_.begin(), int_table_.end(), i) == 0){
                         int_table_.push_back(i);
+                        return int_table_.size();
+			    }else{
+                    return std::distance(int_table_.begin(), std::find(int_table_.begin(), int_table_.end(), i));
 			    }
 			}
 
-            void add_float_constant(const float f){
+            std::size_t add_float_constant(const float f){
 			    if (std::count(float_table_.begin(), float_table_.end(), f) == 0){
                         float_table_.push_back(f);
+                        return float_table_.size();
+			    }else{
+			        return std::distance(float_table_.begin(), std::find(float_table_.begin(), float_table_.end(), f));
 			    }
 			}
 

@@ -20,6 +20,7 @@ namespace Freefoil {
             class binding;
             typedef shared_ptr<binding> binding_shared_ptr;
             typedef vector<binding_shared_ptr> bindings_shared_ptr_vector_t;
+
             class binding {
                 friend class symbol_table;
                 string name_;
@@ -52,10 +53,16 @@ namespace Freefoil {
                 bindings_[index] = binding_shared_ptr(new binding(the_name, the_value_descriptor, bindings_[index]));
                 return index;
             }
-            const value_descriptor &lookup(const string &the_name) const {
-                const size_t index = hash(the_name);
-                return bindings_[index]->value_descriptor_;
-            }
+            value_descriptor *lookup(const string &the_name) const {
+                const size_t index = hash(the_name) % SIZE;
+                //return bindings_[index]->value_descriptor_;
+                for (binding_shared_ptr b = bindings_[index]; b != NULL; b = b->next_binding_){
+                    if (the_name == b->name_){
+                        return &(b->value_descriptor_);
+                    }
+                }
+                return NULL; //not found
+           }
 
             void pop_buckets_head(const size_t the_index){
                 bindings_[the_index] = (*bindings_[the_index]).next_binding_;

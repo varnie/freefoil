@@ -360,23 +360,26 @@ namespace Freefoil {
                 assert(var_type_as_str == "bool");
                 var_type = value_descriptor::boolType;
             }
+            //TODO:
             for (iter_t cur_iter = iter->children.begin() + 1, iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter) {
                 //parse var decl
                 assert(cur_iter->value.id() == freefoil_grammar::var_declare_tail_ID);
                 const std::string var_name(parse_str(cur_iter->children.begin()));
-                ++stack_offset_;
+
                 const std::size_t bucket_index = curr_symbol_table_.insert(var_name, value_descriptor(var_type, stack_offset_));
                 curr_scope_stack_.push_bucket_index(bucket_index);
 
                 //generate an instruction
                 curr_parsing_function->add_instruction(instruction(Private::PUSH_SPACE));
 
+                if (cur_iter->children.begin() + 1 != cur_iter->children.end()){
                     //it is an assign expr
                     parse_bool_expr(cur_iter->children.begin() + 2);
 
                     curr_parsing_function->add_instruction(instruction(Private::STORE_VAR));
                     curr_parsing_function->add_instruction(instruction(Private::GET_VAR_INDEX, stack_offset_));
-
+                }
+                ++stack_offset_;
             }
             break;
         }
@@ -447,6 +450,7 @@ namespace Freefoil {
                 parse_term(++cur_iter);
                 curr_parsing_function->add_instruction(instruction(Private::MINUS_OP));
             }
+            ++cur_iter;
         }
 
         if (has_unary_plus_minus_op) {
@@ -476,7 +480,6 @@ namespace Freefoil {
         }
     }
 
-
     void script::parse_factor(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::factor_ID);
@@ -484,7 +487,13 @@ namespace Freefoil {
         switch (iter->children.begin()->value.id().to_long()) {
         case freefoil_grammar::ident_ID:{
             const string name(parse_str(iter->children.begin()));
-            const int stack_offset = curr_symbol_table_.lookup(name).get_stack_offset();
+            const value_descriptor *the_value_descriptor = curr_symbol_table_.lookup(name);
+            if (the_value_descriptor == NULL){
+                //error. such variable not presented
+                throw freefoil_exception("unknown variable : " + name);
+            }
+
+            const int stack_offset = the_value_descriptor->get_stack_offset();
             curr_parsing_function->add_instruction(instruction(Private::LOAD_VAR));
             curr_parsing_function->add_instruction(instruction(stack_offset));
             break;
@@ -494,10 +503,14 @@ namespace Freefoil {
             const std::string number_as_str(parse_str(iter->children.begin()));
             if (number_as_str.find('.') != std::string::npos){
                 //it is float value
-                curr_parsing_function->add_float_constant(boost::lexical_cast<int>(number_as_str));
+                const std::size_t index = curr_parsing_function->add_float_constant(boost::lexical_cast<float>(number_as_str));
+                curr_parsing_function->add_instruction(instruction(Private::GET_FLOAT_CONST));
+                curr_parsing_function->add_instruction(instruction(Private::GET_INDEX_OF_CONST, (int)index));
             }else{
                 //it is int value
-                curr_parsing_function->add_int_constant(boost::lexical_cast<float>(number_as_str));
+                const std::size_t index = curr_parsing_function->add_int_constant(boost::lexical_cast<int>(number_as_str));
+                curr_parsing_function->add_instruction(instruction(Private::GET_INT_CONST));
+                curr_parsing_function->add_instruction(instruction(Private::GET_INDEX_OF_CONST, (int)index));
             }
             break;
         }
@@ -545,7 +558,34 @@ namespace Freefoil {
 
         assert(iter->value.id() == freefoil_grammar::bool_relation_ID);
 
-        //TODO:
+       iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end();
+       parse_expr(cur_iter++);
+
+       while (cur_iter != iter_end) {
+            assert(cur_iter->value.id() == freefoil_grammar::relation_tail_ID);
+            const std::string relation_op_as_str(parse_str(cur_iter));
+
+            if (relation_op_as_str == "==") {
+                parse_expr(++cur_iter);
+                curr_parsing_function->add_instruction(instruction(Private::EQUAL_OP));
+            } else if (relation_op_as_str == "!=") {
+                parse_expr(++cur_iter);
+                curr_parsing_function->add_instruction(instruction(Private::NOT_EQUAL_OP));
+            } else if (relation_op_as_str == "<=") {
+                parse_expr(++cur_iter);
+                curr_parsing_function->add_instruction(instruction(Private::LESS_OR_EQUAL_OP));
+            } else if (relation_op_as_str == ">=") {
+                parse_expr(++cur_iter);
+                curr_parsing_function->add_instruction(instruction(Private::GREATER_OR_EQUAL_OP));
+            } else if (relation_op_as_str == "<") {
+                parse_expr(++cur_iter);
+                curr_parsing_function->add_instruction(instruction(Private::LESS_OP));
+            } else{
+                assert(relation_op_as_str == ">");
+                parse_expr(++cur_iter);
+                curr_parsing_function->add_instruction(instruction(Private::GREATER_OP));
+            }
+        }
     }
 
     void script::parse_number(const iter_t &iter) {

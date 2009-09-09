@@ -7,7 +7,9 @@ namespace Freefoil {
     namespace Private {
 
         enum OPCODE_KIND {
-            PUSH_INT_CONST,
+            GET_INT_CONST,
+            GET_INDEX_OF_CONST,
+            GET_FLOAT_CONST,
             PUSH_FLOAT_CONST,
             PUSH_STR_CONST,
             PUSH_TRUE,
@@ -25,6 +27,12 @@ namespace Freefoil {
             MINUS_OP,
             MULT_OP,
             DIVIDE_OP,
+            EQUAL_OP,
+            NOT_EQUAL_OP,
+            LESS_OP,
+            GREATER_OP,
+            LESS_OR_EQUAL_OP,
+            GREATER_OR_EQUAL_OP,
             //TODO: add other opcodes
         };
 
@@ -39,10 +47,10 @@ namespace Freefoil {
                 void *pObj_;
             };
             explicit instruction(OPCODE_KIND op):op_(op) {}
-            instruction(OPCODE_KIND op, float f):op_(op), f_(f) {}
-            instruction(OPCODE_KIND op, int i):op_(op), i_(i) {}
-            instruction(OPCODE_KIND op, char *pChar):op_(op), pChar_(pChar) {}
-            instruction(int offset):i_(offset) {}
+            explicit instruction(OPCODE_KIND op, float f):op_(op), f_(f) {}
+            explicit instruction(OPCODE_KIND op, int i):op_(op), i_(i) {}
+            explicit instruction(OPCODE_KIND op, char *pChar):op_(op), pChar_(pChar) {}
+            explicit instruction(int offset):i_(offset) {}
             std::ostream & operator << (std::ostream &os) {
                 os << f_;
                 return os;
@@ -53,7 +61,13 @@ namespace Freefoil {
 
             theStream << the_instruction.op_;
             if (the_instruction.op_ == GET_VAR_INDEX){
-                theStream << the_instruction.i_;
+                theStream << "offset ";
+                theStream << the_instruction.i_ << " ";
+
+            }else if (the_instruction.op_ == GET_INDEX_OF_CONST){
+                theStream << "index of const ";
+                theStream << the_instruction.i_ << " ";
+
             }
 
             return theStream;

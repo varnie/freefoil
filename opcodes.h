@@ -51,15 +51,11 @@ namespace Freefoil {
             explicit instruction(OPCODE_KIND op, int i):op_(op), i_(i) {}
             explicit instruction(OPCODE_KIND op, char *pChar):op_(op), pChar_(pChar) {}
             explicit instruction(int offset):i_(offset) {}
-            std::ostream & operator << (std::ostream &os) {
-                os << f_;
-                return os;
-            }
         };
 
         inline std::ostream& operator<< ( std::ostream& theStream, const instruction & the_instruction){
 
-            theStream << the_instruction.op_;
+            theStream << the_instruction.op_ << " ";
             if (the_instruction.op_ == GET_VAR_INDEX){
                 theStream << "offset ";
                 theStream << the_instruction.i_ << " ";

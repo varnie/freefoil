@@ -367,7 +367,7 @@ namespace Freefoil {
                 const std::string var_name(parse_str(cur_iter->children.begin()));
 
                 const std::size_t bucket_index = curr_symbol_table_.insert(var_name, value_descriptor(var_type, stack_offset_));
-                curr_scope_stack_.push_bucket_index(bucket_index);
+                curr_scope_stack_.push_bucket_index(bucket_index, var_name);
 
                 //generate an instruction
                 curr_parsing_function->add_instruction(instruction(Private::PUSH_SPACE));
@@ -477,6 +477,7 @@ namespace Freefoil {
                 parse_factor(++cur_iter);
                 curr_parsing_function->add_instruction(instruction(Private::DIVIDE_OP));
             }
+            ++cur_iter;
         }
     }
 
@@ -495,7 +496,7 @@ namespace Freefoil {
 
             const int stack_offset = the_value_descriptor->get_stack_offset();
             curr_parsing_function->add_instruction(instruction(Private::LOAD_VAR));
-            curr_parsing_function->add_instruction(instruction(stack_offset));
+            curr_parsing_function->add_instruction(instruction(Private::GET_VAR_INDEX, stack_offset));
             break;
         }
 
@@ -606,12 +607,13 @@ namespace Freefoil {
 
         curr_symbol_table_ = symbol_table();
         curr_scope_stack_.attach_symbol_table(&curr_symbol_table_);
+        curr_scope_stack_.begin_scope();
 
         assert(iter->value.id() == freefoil_grammar::func_body_ID);
         for (iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter) {
             parse_stmt(cur_iter);
-
         }
+        curr_scope_stack_.end_scope();
     }
 
     std::string script::parse_str(const iter_t &iter) {

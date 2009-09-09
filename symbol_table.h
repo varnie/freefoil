@@ -48,11 +48,13 @@ namespace Freefoil {
                     bindings_.push_back(null_binding);
                 }
             }
+
             size_t insert(const string &the_name, const value_descriptor& the_value_descriptor) {
                 const size_t index = hash(the_name);
                 bindings_[index] = binding_shared_ptr(new binding(the_name, the_value_descriptor, bindings_[index]));
                 return index;
             }
+
             value_descriptor *lookup(const string &the_name) const {
                 const size_t index = hash(the_name) % SIZE;
                 //return bindings_[index]->value_descriptor_;

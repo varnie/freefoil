@@ -18,7 +18,7 @@ namespace Freefoil{
 			bool is_ref_;
 			string name_;
 		public:
-			param(const value_descriptor::E_VALUE_TYPE value_type, bool is_ref = false, const std::string name = string())
+			param(const value_descriptor::E_VALUE_TYPE value_type, bool is_ref = false, const string &name = string())
 				:value_type_(value_type), is_ref_(is_ref), name_(name)
 				{}
 			const string &get_name() const{

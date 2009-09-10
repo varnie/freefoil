@@ -1,7 +1,7 @@
 #ifndef FUNCTION_DESCRIPTOR_H_INCLUDED
 #define FUNCTION_DESCRIPTOR_H_INCLUDED
 
-#include "freefoil_defs.h"
+#include "AST_defs.h"
 #include "value_descriptor.h"
 #include "param.h"
 #include "opcodes.h"
@@ -23,11 +23,11 @@ namespace Freefoil {
 		using boost::shared_ptr;
 
 		class function_descriptor{
-		public:
-            typedef vector<instruction> bytecode_stream_t;
-            typedef vector<int> int_table_t;
+		    typedef vector<int> int_table_t;
             typedef vector<float> float_table_t;
             typedef vector<string> string_table_t;
+		public:
+            typedef vector<instruction> bytecode_stream_t;
 
 			enum E_FUNCTION_TYPE{
 				intType,

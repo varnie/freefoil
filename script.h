@@ -3,10 +3,13 @@
 
 #define BOOST_SPIRIT_DUMP_PARSETREE_AS_XML 1
 
-#include "freefoil_defs.h"
+#include "AST_defs.h"
 #include "function_descriptor.h"
-#include "symbol_table.h"
-#include "scope_stack.h"
+//#include "symbol_table.h"
+//#include "scope_stack.h"
+#include "symbols_handler.h"
+
+#include <boost/scoped_ptr.hpp>
 
 namespace Freefoil {
 
@@ -15,20 +18,25 @@ namespace Freefoil {
     using Private::params_shared_ptr_list_t;
     using Private::param_shared_ptr_t;
     using Private::iter_t;
-    using Private::symbol_table;
-    using Private::scope_stack;
     using Private::function_descriptor;
     using Private::OPCODE_KIND;
+    using Private::symbols_handler;
+
+    using boost::scoped_ptr;
 
     class script {
 
         function_shared_ptr_list_t core_funcs_list_;
         function_shared_ptr_list_t funcs_list_;
-        symbol_table curr_symbol_table_;
-        scope_stack curr_scope_stack_;
+        //symbol_table curr_symbol_table_;
+        //scope_stack curr_scope_stack_;
+
+        typedef scoped_ptr<symbols_handler> symbols_handler_scoped_ptr;
+        symbols_handler_scoped_ptr symbols_handler_;
         function_shared_ptr_t curr_parsing_function;
         int stack_offset_;
     private:
+        void setup_core_funcs();
         void parse(const iter_t &iter);
         void parse_script(const iter_t &iter);
         void parse_func_decl(const iter_t &iter);

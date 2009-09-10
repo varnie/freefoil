@@ -1,19 +1,20 @@
 #include "script.h"
 #include "freefoil_grammar.h"
-#include "freefoil_defs.h"
+#include "AST_defs.h"
 #include "exceptions.h"
 #include "opcodes.h"
 
 #include <iostream>
 #include <list>
 #include <algorithm>
-#include <boost/bind.hpp>
-#include <boost/lexical_cast.hpp>
-
 #if defined(BOOST_SPIRIT_DUMP_PARSETREE_AS_XML)
 #include <boost/spirit/include/classic_tree_to_xml.hpp>
 #include <map>
 #endif
+#include <boost/bind.hpp>
+#include <boost/lexical_cast.hpp>
+
+
 
 namespace Freefoil {
 
@@ -175,14 +176,16 @@ namespace Freefoil {
         std::cout << "parsing end" << std::endl;
     }
 
-    script::script()  {
+    void script::setup_core_funcs(){
 
-        //TODO: populate core_funcs_list_ with builtin functions
+        //TODO: populate core_funcs_list_ with core functions
         params_shared_ptr_list_t params;
         params.push_back(param_shared_ptr_t(new param(value_descriptor::intType, false, "i")));
         core_funcs_list_.push_back(function_shared_ptr_t (new function_descriptor("foo", function_descriptor::voidType, params)));
-        //	core_funcs_list_.push_back(function_shared_ptr_t(new function_descriptor("foo", function::voidType)));
-        //TODO: add all core funcs
+    }
+
+    script::script() :symbols_handler_(NULL), curr_parsing_function(), stack_offset_(0) {
+        setup_core_funcs();
     }
 
     void script::parse_script(const iter_t &iter) {
@@ -340,9 +343,11 @@ namespace Freefoil {
         switch (id.to_long()) {
         case freefoil_grammar::block_ID: {
             const int stack_offset = stack_offset_;
-            curr_scope_stack_.begin_scope();
+            //curr_scope_stack_.begin_scope();
+            symbols_handler_->scope_begin();
             parse_stmt(iter->children.begin());
-            curr_scope_stack_.end_scope();
+            //curr_scope_stack_.end_scope();
+            symbols_handler_->scope_end();
             stack_offset_ = stack_offset;
             break;
         }
@@ -366,8 +371,9 @@ namespace Freefoil {
                 assert(cur_iter->value.id() == freefoil_grammar::var_declare_tail_ID);
                 const std::string var_name(parse_str(cur_iter->children.begin()));
 
-                const std::size_t bucket_index = curr_symbol_table_.insert(var_name, value_descriptor(var_type, stack_offset_));
-                curr_scope_stack_.push_bucket_index(bucket_index, var_name);
+                //const std::size_t bucket_index = curr_symbol_table_.insert(var_name, value_descriptor(var_type, stack_offset_));
+                //curr_scope_stack_.push_bucket_index(bucket_index, var_name);
+                symbols_handler_->insert(var_name, value_descriptor(var_type, stack_offset_));
 
                 //generate an instruction
                 curr_parsing_function->add_instruction(instruction(Private::PUSH_SPACE));
@@ -488,7 +494,8 @@ namespace Freefoil {
         switch (iter->children.begin()->value.id().to_long()) {
         case freefoil_grammar::ident_ID:{
             const string name(parse_str(iter->children.begin()));
-            const value_descriptor *the_value_descriptor = curr_symbol_table_.lookup(name);
+            //const value_descriptor *the_value_descriptor = curr_symbol_table_.lookup(name);
+            const value_descriptor *the_value_descriptor = symbols_handler_->lookup(name);
             if (the_value_descriptor == NULL){
                 //error. such variable not presented
                 throw freefoil_exception("unknown variable : " + name);
@@ -605,15 +612,18 @@ namespace Freefoil {
 
         stack_offset_ = curr_parsing_function->get_params_count();
 
-        curr_symbol_table_ = symbol_table();
-        curr_scope_stack_.attach_symbol_table(&curr_symbol_table_);
-        curr_scope_stack_.begin_scope();
+        //curr_symbol_table_ = symbol_table();
+        //curr_scope_stack_.attach_symbol_table(&curr_symbol_table_);
+        //curr_scope_stack_.begin_scope();
+        symbols_handler_.reset(new symbols_handler);
+        symbols_handler_->scope_begin();
 
         assert(iter->value.id() == freefoil_grammar::func_body_ID);
         for (iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter) {
             parse_stmt(cur_iter);
         }
-        curr_scope_stack_.end_scope();
+        //curr_scope_stack_.end_scope();
+        symbols_handler_->scope_end();
     }
 
     std::string script::parse_str(const iter_t &iter) {

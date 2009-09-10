@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <boost/shared_ptr.hpp>
+#include <boost/scoped_ptr.hpp>
 #include "value_descriptor.h"
 
 namespace Freefoil {
@@ -12,6 +13,7 @@ namespace Freefoil {
         using std::string;
         using std::vector;
         using boost::shared_ptr;
+        using boost::scoped_ptr;
 
         class symbol_table {
 
@@ -70,6 +72,8 @@ namespace Freefoil {
                 bindings_[the_index] = (*bindings_[the_index]).next_binding_;
             }
         };
+
+        typedef scoped_ptr<symbol_table> symbol_table_scoped_ptr;
     }
 }
 

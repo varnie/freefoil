@@ -191,9 +191,9 @@ namespace Freefoil {
                     factor = func_call
                              | ident
                              | number
+                             | quoted_string
                              | no_node_d[ch_p('(')] >> bool_expr >> no_node_d[ch_p(')')]
                              | keyword_p("true") | keyword_p("false")
-                             | quoted_string
                     ;
 
                     quoted_string = token_node_d[lexeme_d[confix_p('"', *c_escape_ch_p, '"')]];

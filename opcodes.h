@@ -10,6 +10,7 @@ namespace Freefoil {
             GET_INT_CONST,
             GET_INDEX_OF_CONST,
             GET_FLOAT_CONST,
+            GET_STRING_CONST,
             PUSH_FLOAT_CONST,
             PUSH_STR_CONST,
             PUSH_TRUE,

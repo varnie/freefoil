@@ -58,8 +58,8 @@ namespace Freefoil {
             }
 
             value_descriptor *lookup(const string &the_name) const {
+
                 const size_t index = hash(the_name) % SIZE;
-                //return bindings_[index]->value_descriptor_;
                 for (binding_shared_ptr b = bindings_[index]; b != NULL; b = b->next_binding_){
                     if (the_name == b->name_){
                         return &(b->value_descriptor_);

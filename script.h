@@ -5,8 +5,6 @@
 
 #include "AST_defs.h"
 #include "function_descriptor.h"
-//#include "symbol_table.h"
-//#include "scope_stack.h"
 #include "symbols_handler.h"
 
 #include <boost/scoped_ptr.hpp>
@@ -33,7 +31,7 @@ namespace Freefoil {
 
         typedef scoped_ptr<symbols_handler> symbols_handler_scoped_ptr;
         symbols_handler_scoped_ptr symbols_handler_;
-        function_shared_ptr_t curr_parsing_function;
+        function_shared_ptr_t curr_parsing_function_;
         int stack_offset_;
     private:
         void setup_core_funcs();

@@ -13,19 +13,15 @@ namespace Freefoil{
 		using std::list;
 		using std::string;
 
-		class param{
-			value_descriptor::E_VALUE_TYPE value_type_;
+		class param : public value_descriptor{
+			std::string name_;
 			bool is_ref_;
-			string name_;
 		public:
-			param(const value_descriptor::E_VALUE_TYPE value_type, bool is_ref = false, const string &name = string())
-				:value_type_(value_type), is_ref_(is_ref), name_(name)
+			param(const value_descriptor::E_VALUE_TYPE value_type, const int stack_offset, const string &name = string(), bool is_ref = false)
+				:value_descriptor(value_type, stack_offset), name_(name), is_ref_(is_ref)
 				{}
 			const string &get_name() const{
 				return name_;
-			}
-			const value_descriptor::E_VALUE_TYPE get_value_type() const{
-				return value_type_;
 			}
 			bool is_ref() const{
 				return is_ref_;

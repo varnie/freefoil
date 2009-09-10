@@ -48,6 +48,11 @@ namespace Freefoil {
         return 	the_func->get_name() == "main";
     }
 
+    bool param_has_name_functor(const param_shared_ptr_t &the_param, const std::string &the_name){
+        return the_param->get_name() == the_name;
+    }
+
+
     void script::exec() {
 
         std::string str;
@@ -162,9 +167,9 @@ namespace Freefoil {
             //now we have all function declarations valid and we are sure we have "main" entry point function
             //it is a time for parsing function's bodies and generate intermediate code
             for (function_shared_ptr_list_t::const_iterator cur_iter = funcs_list_.begin(), iter_end = funcs_list_.end(); cur_iter != iter_end; ++cur_iter) {
-                curr_parsing_function = *cur_iter;
-                parse_func_body(curr_parsing_function->get_body());
-                curr_parsing_function->print_bytecode_stream();
+                curr_parsing_function_ = *cur_iter;
+                parse_func_body(curr_parsing_function_->get_body());
+                curr_parsing_function_->print_bytecode_stream();
             }
 
             //TODO:
@@ -176,7 +181,7 @@ namespace Freefoil {
         std::cout << "parsing end" << std::endl;
     }
 
-    void script::setup_core_funcs(){
+    void script::setup_core_funcs() {
 
         //TODO: populate core_funcs_list_ with core functions
         params_shared_ptr_list_t params;
@@ -184,7 +189,7 @@ namespace Freefoil {
         core_funcs_list_.push_back(function_shared_ptr_t (new function_descriptor("foo", function_descriptor::voidType, params)));
     }
 
-    script::script() :symbols_handler_(NULL), curr_parsing_function(), stack_offset_(0) {
+    script::script() :symbols_handler_(NULL), curr_parsing_function_(), stack_offset_(0) {
         setup_core_funcs();
     }
 
@@ -203,6 +208,9 @@ namespace Freefoil {
     void script::parse_func_decl(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::func_decl_ID);
+
+        stack_offset_ = 0;
+
         const function_shared_ptr_t parsed_func = parse_func_head(iter->children.begin());
 
         //is it a redeclaration of function?
@@ -289,7 +297,7 @@ namespace Freefoil {
             }
         }
         assert(cur_iter == iter_end);
-        return param_shared_ptr_t(new param(val_type, is_ref, val_name));
+        return param_shared_ptr_t(new param(val_type, stack_offset_++, val_name, is_ref));
     }
 
     params_shared_ptr_list_t script::parse_func_params_list(const iter_t &iter) {
@@ -339,14 +347,11 @@ namespace Freefoil {
 
     void script::parse_stmt(const iter_t &iter) {
 
-        const parser_id id = iter->value.id();
-        switch (id.to_long()) {
+        switch (iter->value.id().to_long()) {
         case freefoil_grammar::block_ID: {
             const int stack_offset = stack_offset_;
-            //curr_scope_stack_.begin_scope();
             symbols_handler_->scope_begin();
             parse_stmt(iter->children.begin());
-            //curr_scope_stack_.end_scope();
             symbols_handler_->scope_end();
             stack_offset_ = stack_offset;
             break;
@@ -365,25 +370,23 @@ namespace Freefoil {
                 assert(var_type_as_str == "bool");
                 var_type = value_descriptor::boolType;
             }
-            //TODO:
+
             for (iter_t cur_iter = iter->children.begin() + 1, iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter) {
                 //parse var decl
                 assert(cur_iter->value.id() == freefoil_grammar::var_declare_tail_ID);
                 const std::string var_name(parse_str(cur_iter->children.begin()));
 
-                //const std::size_t bucket_index = curr_symbol_table_.insert(var_name, value_descriptor(var_type, stack_offset_));
-                //curr_scope_stack_.push_bucket_index(bucket_index, var_name);
                 symbols_handler_->insert(var_name, value_descriptor(var_type, stack_offset_));
 
                 //generate an instruction
-                curr_parsing_function->add_instruction(instruction(Private::PUSH_SPACE));
+                curr_parsing_function_->add_instruction(instruction(Private::PUSH_SPACE));
 
-                if (cur_iter->children.begin() + 1 != cur_iter->children.end()){
+                if (cur_iter->children.begin() + 1 != cur_iter->children.end()) {
                     //it is an assign expr
                     parse_bool_expr(cur_iter->children.begin() + 2);
 
-                    curr_parsing_function->add_instruction(instruction(Private::STORE_VAR));
-                    curr_parsing_function->add_instruction(instruction(Private::GET_VAR_INDEX, stack_offset_));
+                    curr_parsing_function_->add_instruction(instruction(Private::STORE_VAR));
+                    curr_parsing_function_->add_instruction(instruction(Private::GET_VAR_INDEX, stack_offset_));
                 }
                 ++stack_offset_;
             }
@@ -417,10 +420,10 @@ namespace Freefoil {
             const std::string or_operation_as_str(parse_str(cur_iter++));
             parse_bool_term(cur_iter++);
             if (or_operation_as_str == "or") {
-                curr_parsing_function->add_instruction(instruction(Private::OR_OP));
+                curr_parsing_function_->add_instruction(instruction(Private::OR_OP));
             } else {
                 assert(or_operation_as_str == "xor");
-                curr_parsing_function->add_instruction(instruction(Private::XOR_OP));
+                curr_parsing_function_->add_instruction(instruction(Private::XOR_OP));
             }
         }
     }
@@ -433,7 +436,7 @@ namespace Freefoil {
         iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end();
         while (cur_iter != iter_end && parse_str(cur_iter) == "and") {
             parse_bool_factor(++cur_iter);
-            curr_parsing_function->add_instruction(instruction(Private::AND_OP));
+            curr_parsing_function_->add_instruction(instruction(Private::AND_OP));
         }
     }
 
@@ -450,18 +453,18 @@ namespace Freefoil {
             assert(cur_iter->value.id() == freefoil_grammar::plus_minus_op_ID);
             if (parse_str(cur_iter) == "+") {
                 parse_term(++cur_iter);
-                curr_parsing_function->add_instruction(instruction(Private::PLUS_OP));
+                curr_parsing_function_->add_instruction(instruction(Private::PLUS_OP));
             } else {
                 assert(parse_str(cur_iter) == "-");
                 parse_term(++cur_iter);
-                curr_parsing_function->add_instruction(instruction(Private::MINUS_OP));
+                curr_parsing_function_->add_instruction(instruction(Private::MINUS_OP));
             }
             ++cur_iter;
         }
 
         if (has_unary_plus_minus_op) {
             if (parse_str(iter->children.begin()) == "-") {
-                curr_parsing_function->add_instruction(instruction(Private::NEGATE_OP));
+                curr_parsing_function_->add_instruction(instruction(Private::NEGATE_OP));
             }
         }
     }
@@ -477,11 +480,11 @@ namespace Freefoil {
             assert(cur_iter->value.id() == freefoil_grammar::mult_divide_op_ID);
             if (parse_str(cur_iter) == "*") {
                 parse_factor(++cur_iter);
-                curr_parsing_function->add_instruction(instruction(Private::MULT_OP));
+                curr_parsing_function_->add_instruction(instruction(Private::MULT_OP));
             } else {
                 assert(parse_str(cur_iter) == "/");
                 parse_factor(++cur_iter);
-                curr_parsing_function->add_instruction(instruction(Private::DIVIDE_OP));
+                curr_parsing_function_->add_instruction(instruction(Private::DIVIDE_OP));
             }
             ++cur_iter;
         }
@@ -492,39 +495,39 @@ namespace Freefoil {
         assert(iter->value.id() == freefoil_grammar::factor_ID);
 
         switch (iter->children.begin()->value.id().to_long()) {
-        case freefoil_grammar::ident_ID:{
+        case freefoil_grammar::ident_ID: {
             const string name(parse_str(iter->children.begin()));
-            //const value_descriptor *the_value_descriptor = curr_symbol_table_.lookup(name);
+            int stack_offset;
             const value_descriptor *the_value_descriptor = symbols_handler_->lookup(name);
-            if (the_value_descriptor == NULL){
-                //error. such variable not presented
-                throw freefoil_exception("unknown variable : " + name);
-            }
-
-            const int stack_offset = the_value_descriptor->get_stack_offset();
-            curr_parsing_function->add_instruction(instruction(Private::LOAD_VAR));
-            curr_parsing_function->add_instruction(instruction(Private::GET_VAR_INDEX, stack_offset));
-            break;
-        }
-
-        case freefoil_grammar::number_ID:{
-            const std::string number_as_str(parse_str(iter->children.begin()));
-            if (number_as_str.find('.') != std::string::npos){
-                //it is float value
-                const std::size_t index = curr_parsing_function->add_float_constant(boost::lexical_cast<float>(number_as_str));
-                curr_parsing_function->add_instruction(instruction(Private::GET_FLOAT_CONST));
-                curr_parsing_function->add_instruction(instruction(Private::GET_INDEX_OF_CONST, (int)index));
+            if (the_value_descriptor != NULL){
+                    stack_offset = the_value_descriptor->get_stack_offset();
             }else{
-                //it is int value
-                const std::size_t index = curr_parsing_function->add_int_constant(boost::lexical_cast<int>(number_as_str));
-                curr_parsing_function->add_instruction(instruction(Private::GET_INT_CONST));
-                curr_parsing_function->add_instruction(instruction(Private::GET_INDEX_OF_CONST, (int)index));
+                const params_shared_ptr_list_t::const_iterator suitable_param_iter
+                = std::find_if(
+                    curr_parsing_function_->get_params().begin(),
+                    curr_parsing_function_->get_params().end(),
+                    boost::bind(&param_has_name_functor, _1, name));
+                if (suitable_param_iter != curr_parsing_function_->get_params().end()){
+                    stack_offset = (*suitable_param_iter)->get_stack_offset();
+                }else{
+                    //error. such variable not presented
+                    throw freefoil_exception("unknown ident: " + name);
+                }
             }
+
+            curr_parsing_function_->add_instruction(instruction(Private::LOAD_VAR));
+            curr_parsing_function_->add_instruction(instruction(Private::GET_VAR_INDEX, stack_offset));
             break;
         }
 
-        case freefoil_grammar::quoted_string_ID:{
-         //TODO:
+        case freefoil_grammar::number_ID: {
+            parse_number(iter->children.begin());
+            break;
+        }
+
+        case freefoil_grammar::quoted_string_ID: {
+            parse_quoted_string(iter->children.begin());
+            break;
         }
 
         case freefoil_grammar::bool_expr_ID:
@@ -532,10 +535,11 @@ namespace Freefoil {
             break;
 
         case freefoil_grammar::func_call_ID:
-        //TODO:
+            //TODO:
             break;
 
         default:
+            //can't occur
             break;
         }
 
@@ -558,7 +562,7 @@ namespace Freefoil {
         const bool negate = (parse_str(iter->children.begin()) == "not");
         parse_bool_relation(negate ? iter->children.begin() + 1 : iter->children.begin());
         if (negate) {
-            curr_parsing_function->add_instruction(instruction(Private::NOT_OP));
+            curr_parsing_function_->add_instruction(instruction(Private::NOT_OP));
         }
     }
 
@@ -566,32 +570,32 @@ namespace Freefoil {
 
         assert(iter->value.id() == freefoil_grammar::bool_relation_ID);
 
-       iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end();
-       parse_expr(cur_iter++);
+        iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end();
+        parse_expr(cur_iter++);
 
-       while (cur_iter != iter_end) {
+        while (cur_iter != iter_end) {
             assert(cur_iter->value.id() == freefoil_grammar::relation_tail_ID);
             const std::string relation_op_as_str(parse_str(cur_iter));
 
             if (relation_op_as_str == "==") {
                 parse_expr(++cur_iter);
-                curr_parsing_function->add_instruction(instruction(Private::EQUAL_OP));
+                curr_parsing_function_->add_instruction(instruction(Private::EQUAL_OP));
             } else if (relation_op_as_str == "!=") {
                 parse_expr(++cur_iter);
-                curr_parsing_function->add_instruction(instruction(Private::NOT_EQUAL_OP));
+                curr_parsing_function_->add_instruction(instruction(Private::NOT_EQUAL_OP));
             } else if (relation_op_as_str == "<=") {
                 parse_expr(++cur_iter);
-                curr_parsing_function->add_instruction(instruction(Private::LESS_OR_EQUAL_OP));
+                curr_parsing_function_->add_instruction(instruction(Private::LESS_OR_EQUAL_OP));
             } else if (relation_op_as_str == ">=") {
                 parse_expr(++cur_iter);
-                curr_parsing_function->add_instruction(instruction(Private::GREATER_OR_EQUAL_OP));
+                curr_parsing_function_->add_instruction(instruction(Private::GREATER_OR_EQUAL_OP));
             } else if (relation_op_as_str == "<") {
                 parse_expr(++cur_iter);
-                curr_parsing_function->add_instruction(instruction(Private::LESS_OP));
-            } else{
+                curr_parsing_function_->add_instruction(instruction(Private::LESS_OP));
+            } else {
                 assert(relation_op_as_str == ">");
                 parse_expr(++cur_iter);
-                curr_parsing_function->add_instruction(instruction(Private::GREATER_OP));
+                curr_parsing_function_->add_instruction(instruction(Private::GREATER_OP));
             }
         }
     }
@@ -599,22 +603,36 @@ namespace Freefoil {
     void script::parse_number(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::number_ID);
-        //TODO:
+
+        const std::string number_as_str(parse_str(iter));
+        if (number_as_str.find('.') != std::string::npos) {
+            //it is float value
+            const std::size_t index = curr_parsing_function_->add_float_constant(boost::lexical_cast<float>(number_as_str));
+            curr_parsing_function_->add_instruction(instruction(Private::GET_FLOAT_CONST));
+            curr_parsing_function_->add_instruction(instruction(Private::GET_INDEX_OF_CONST, (int)index));
+        } else {
+            //it is int value
+            const std::size_t index = curr_parsing_function_->add_int_constant(boost::lexical_cast<int>(number_as_str));
+            curr_parsing_function_->add_instruction(instruction(Private::GET_INT_CONST));
+            curr_parsing_function_->add_instruction(instruction(Private::GET_INDEX_OF_CONST, (int)index));
+        }
     }
 
     void script::parse_quoted_string(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::quoted_string_ID);
-        //TODO:
+        const std::string quoted_string(parse_str(iter));
+        const std::string str_value_without_quotes(quoted_string.begin() + 1, quoted_string.end() - 1);
+
+        const std::size_t index = curr_parsing_function_->add_string_constant(str_value_without_quotes);
+        curr_parsing_function_->add_instruction(instruction(Private::GET_STRING_CONST));
+        curr_parsing_function_->add_instruction(instruction(Private::GET_INDEX_OF_CONST, (int)index));
     }
 
     void script::parse_func_body(const iter_t &iter) {
 
-        stack_offset_ = curr_parsing_function->get_params_count();
+        stack_offset_ = curr_parsing_function_->get_params_count();
 
-        //curr_symbol_table_ = symbol_table();
-        //curr_scope_stack_.attach_symbol_table(&curr_symbol_table_);
-        //curr_scope_stack_.begin_scope();
         symbols_handler_.reset(new symbols_handler);
         symbols_handler_->scope_begin();
 
@@ -622,7 +640,7 @@ namespace Freefoil {
         for (iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter) {
             parse_stmt(cur_iter);
         }
-        //curr_scope_stack_.end_scope();
+
         symbols_handler_->scope_end();
     }
 

@@ -22,6 +22,9 @@ namespace Freefoil {
                 int get_stack_offset() const{
                     return stack_offset_;
                 }
+                E_VALUE_TYPE get_value_type() const{
+                    return value_type_;
+                }
 			};
 	}
 }

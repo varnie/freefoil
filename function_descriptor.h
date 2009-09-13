@@ -3,7 +3,7 @@
 
 #include "AST_defs.h"
 #include "value_descriptor.h"
-#include "param.h"
+#include "param_descriptor.h"
 #include "opcodes.h"
 
 #include <vector>
@@ -37,8 +37,8 @@ namespace Freefoil {
 				voidType
 			};
 
-			function_descriptor(const string &name, const E_FUNCTION_TYPE func_type, const params_shared_ptr_list_t &params_list = params_shared_ptr_list_t())
-				:name_(name), func_type_(func_type), params_list_(params_list), has_body_(false)
+			function_descriptor(const string &name, const E_FUNCTION_TYPE func_type, const param_descriptors_shared_ptr_list_t &param_descriptors_list = param_descriptors_shared_ptr_list_t())
+				:name_(name), func_type_(func_type), param_descriptors_list_(param_descriptors_list), has_body_(false)
 			{
             }
 
@@ -48,8 +48,8 @@ namespace Freefoil {
 			E_FUNCTION_TYPE get_type() const{
 				return func_type_;
 			}
-			const params_shared_ptr_list_t &get_params() const{
-				return params_list_;
+			const param_descriptors_shared_ptr_list_t &get_param_descriptors() const{
+				return param_descriptors_list_;
 			}
 
 			bool has_body() const{
@@ -69,8 +69,8 @@ namespace Freefoil {
 			    bytecode_stream_.push_back(instr);
 			}
 
-			std::size_t get_params_count() const{
-			    return params_list_.size();
+			std::size_t get_param_descriptors_count() const{
+			    return param_descriptors_list_.size();
 			}
 
 			std::size_t add_int_constant(const int i){
@@ -117,8 +117,8 @@ namespace Freefoil {
 
 			void print_bytecode_stream() const{
                     std::cout << "bytecode: ";
-                    for (bytecode_stream_t::const_iterator iter = bytecode_stream_.begin(), iter_end = bytecode_stream_.end(); iter != iter_end; ++iter){
-                        std::cout << *iter;
+                    for (bytecode_stream_t::const_iterator cur_iter = bytecode_stream_.begin(), iter_end = bytecode_stream_.end(); cur_iter != iter_end; ++cur_iter){
+                        std::cout << *cur_iter;
                     }
                     std::cout << std::endl;
 			}
@@ -126,7 +126,7 @@ namespace Freefoil {
 		private:
 			string name_;
 			E_FUNCTION_TYPE func_type_;
-			params_shared_ptr_list_t params_list_;
+			param_descriptors_shared_ptr_list_t param_descriptors_list_;
 			iter_t iter_body_;
 			bool has_body_;
 

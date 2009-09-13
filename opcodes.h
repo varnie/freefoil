@@ -15,7 +15,6 @@ namespace Freefoil {
             PUSH_STR_CONST,
             PUSH_TRUE,
             PUSH_FALSE,
-            PUSH_SPACE, //space for 1 instruction
             STORE_VAR,
             GET_VAR_INDEX,
             LOAD_VAR,
@@ -56,15 +55,14 @@ namespace Freefoil {
 
         inline std::ostream& operator<< ( std::ostream& theStream, const instruction & the_instruction){
 
-            theStream << the_instruction.op_ << " ";
             if (the_instruction.op_ == GET_VAR_INDEX){
                 theStream << "offset ";
                 theStream << the_instruction.i_ << " ";
-
             }else if (the_instruction.op_ == GET_INDEX_OF_CONST){
                 theStream << "index of const ";
                 theStream << the_instruction.i_ << " ";
-
+            } else{
+                theStream << the_instruction.op_ << " ";
             }
 
             return theStream;

@@ -116,6 +116,7 @@ namespace Freefoil {
                 relation_tail_ID,
                 plus_minus_op_ID,
                 mult_divide_op_ID,
+                boolean_constant_ID,
             };
 
             template <typename ScannerT>
@@ -147,6 +148,12 @@ namespace Freefoil {
                     params_list = no_node_d[ch_p('(')]
                                   >>!(gen_pt_node_d[param] >> *(no_node_d[ch_p(',')] >> gen_pt_node_d[param]))
                                   >> no_node_d[ch_p(')')];
+
+                    func_call = ident >> gen_pt_node_d[invoke_args_list];
+
+                    invoke_args_list = no_node_d[ch_p('(')]
+                                 >> !(gen_pt_node_d[bool_expr] >> *(no_node_d[ch_p(',')] >> gen_pt_node_d[bool_expr]))
+                                 >> no_node_d[ch_p(')')];
 
                     param = var_type >> !ref >> !ident;
 
@@ -188,25 +195,24 @@ namespace Freefoil {
 
                     mult_divide_op = lexeme_d[ch_p("*") | ch_p("/")];
 
+                    boolean_constant = keyword_p("true") | keyword_p("false");
+
                     factor = func_call
                              | ident
                              | number
                              | quoted_string
                              | no_node_d[ch_p('(')] >> bool_expr >> no_node_d[ch_p(')')]
-                             | keyword_p("true") | keyword_p("false")
+                             | boolean_constant
                     ;
 
                     quoted_string = token_node_d[lexeme_d[confix_p('"', *c_escape_ch_p, '"')]];
-
-                    func_call = ident >> gen_pt_node_d[invoke_args_list];
-
-                    invoke_args_list = no_node_d[ch_p('(')] >> !(gen_pt_node_d[bool_expr] >> *(no_node_d[ch_p(',')] >> gen_pt_node_d[bool_expr]))  >> no_node_d[ch_p(')')];
 
                     number = token_node_d[longest_d[uint_p | real_p]];
 
                     stmt =
                         stmt_end |
                         var_declare_stmt_list |
+                        func_call >> no_node_d[stmt_end] |
                         gen_pt_node_d[block]; //TODO: add other alternatives
 
                     block = gen_ast_node_d[no_node_d[ch_p('{')] >> *stmt >> no_node_d[ch_p('}')]];
@@ -254,6 +260,7 @@ namespace Freefoil {
                 GRAMMAR_RULE(relation_tail_ID) relation_tail;
                 GRAMMAR_RULE(plus_minus_op_ID) plus_minus_op;
                 GRAMMAR_RULE(mult_divide_op_ID) mult_divide_op;
+                GRAMMAR_RULE(boolean_constant_ID) boolean_constant;
             };
         };
     }

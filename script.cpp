@@ -22,22 +22,22 @@ namespace Freefoil {
 
     static tree_parse_info_t build_AST(const iterator_t &iter_begin, const iterator_t &iter_end);
 
-    bool params_types_equal_functor(const param_shared_ptr_t &param, const param_shared_ptr_t &the_param) {
-        return 	param->get_value_type() == the_param->get_value_type();
+    bool param_descriptors_types_equal_functor(const param_descriptor_shared_ptr_t &param_descriptor, const param_descriptor_shared_ptr_t &the_param_descriptor) {
+        return 	param_descriptor->get_value_type() == the_param_descriptor->get_value_type();
     }
 
-    bool params_refs_equal_functor(const param_shared_ptr_t &param, const param_shared_ptr_t &the_param) {
-        return 	param->is_ref() == the_param->is_ref();
+    bool param_descriptors_refs_equal_functor(const param_descriptor_shared_ptr_t &param_descriptor, const param_descriptor_shared_ptr_t &the_param_descriptor) {
+        return 	param_descriptor->is_ref() == the_param_descriptor->is_ref();
     }
 
     bool function_heads_equal_functor(const function_shared_ptr_t &func, const function_shared_ptr_t &the_func) {
         return 		func->get_type() == the_func->get_type()
                  &&  func->get_name() == the_func->get_name()
-                 &&  func->get_params().size() == the_func->get_params().size()
+                 &&  func->get_param_descriptors().size() == the_func->get_param_descriptors().size()
                  &&  std::equal(
-                     func->get_params().begin(), func->get_params().end(),
-                     the_func->get_params().begin(),
-                     &params_types_equal_functor);
+                     func->get_param_descriptors().begin(), func->get_param_descriptors().end(),
+                     the_func->get_param_descriptors().begin(),
+                     &param_descriptors_types_equal_functor);
     }
 
     bool function_has_no_body_functor(const function_shared_ptr_t &the_func) {
@@ -48,8 +48,8 @@ namespace Freefoil {
         return 	the_func->get_name() == "main";
     }
 
-    bool param_has_name_functor(const param_shared_ptr_t &the_param, const std::string &the_name){
-        return the_param->get_name() == the_name;
+    bool param_descriptor_has_name_functor(const param_descriptor_shared_ptr_t &the_param_descriptor, const std::string &the_name) {
+        return the_param_descriptor->get_name() == the_name;
     }
 
 
@@ -84,7 +84,6 @@ namespace Freefoil {
                 rule_names[freefoil_grammar::param_ID] = "param";
                 rule_names[freefoil_grammar::ref_ID] = "ref";
                 rule_names[freefoil_grammar::func_type_ID] = "func_type";
-                rule_names[freefoil_grammar::params_list_ID] = "params_list";
                 rule_names[freefoil_grammar::stmt_ID] = "stmt";
                 rule_names[freefoil_grammar::var_declare_stmt_list_ID] = "var_declare_stmt_list";
                 rule_names[freefoil_grammar::expr_ID] = "expr";
@@ -108,6 +107,7 @@ namespace Freefoil {
                 rule_names[freefoil_grammar::relation_tail_ID] = "relation_tail";
                 rule_names[freefoil_grammar::plus_minus_op_ID] = "plus_minus_op";
                 rule_names[freefoil_grammar::mult_divide_op_ID] = "mult_divide_op";
+                rule_names[freefoil_grammar::boolean_constant_ID] = "boolean_constant";
 
                 tree_to_xml(std::cerr,
                             info.trees,
@@ -126,6 +126,7 @@ namespace Freefoil {
     void script::parse(const iter_t &iter) {
 
         std::cout << "parsing begin" << std::endl;
+
         try {
             const parser_id id = iter->value.id();
             assert(id == freefoil_grammar::script_ID || id == freefoil_grammar::func_decl_ID || id == freefoil_grammar::func_impl_ID);
@@ -184,9 +185,9 @@ namespace Freefoil {
     void script::setup_core_funcs() {
 
         //TODO: populate core_funcs_list_ with core functions
-        params_shared_ptr_list_t params;
-        params.push_back(param_shared_ptr_t(new param(value_descriptor::intType, false, "i")));
-        core_funcs_list_.push_back(function_shared_ptr_t (new function_descriptor("foo", function_descriptor::voidType, params)));
+        param_descriptors_shared_ptr_list_t param_descriptors;
+        param_descriptors.push_back(param_descriptor_shared_ptr_t(new param_descriptor(value_descriptor::intType, false, "i")));
+        core_funcs_list_.push_back(function_shared_ptr_t (new function_descriptor("foo", function_descriptor::voidType, param_descriptors)));
     }
 
     script::script() :symbols_handler_(NULL), curr_parsing_function_(), stack_offset_(0) {
@@ -246,11 +247,11 @@ namespace Freefoil {
                 throw freefoil_exception("function " + old_func->get_name() + " already implemented");
             }
             //if that old function differs from our new one only by some "refs", spit an error
-            assert(parsed_func->get_params().size() == old_func->get_params().size());
+            assert(parsed_func->get_param_descriptors().size() == old_func->get_param_descriptors().size());
             if (!std::equal(
-                        old_func->get_params().begin(), old_func->get_params().end(),
-                        parsed_func->get_params().begin(),
-                        &params_refs_equal_functor)) {
+                        old_func->get_param_descriptors().begin(), old_func->get_param_descriptors().end(),
+                        parsed_func->get_param_descriptors().begin(),
+                        &param_descriptors_refs_equal_functor)) {
                 throw freefoil_exception("previous declaration differs from this one only by \"ref(s)\"");
             }
             old_func->set_body(iter->children.begin()+1);
@@ -262,7 +263,7 @@ namespace Freefoil {
         }
     }
 
-    param_shared_ptr_t script::parse_func_param(const iter_t &iter) {
+    param_descriptor_shared_ptr_t script::parse_func_param_descriptor(const iter_t &iter) {
         assert(iter->value.id() == freefoil_grammar::param_ID);
 
         value_descriptor::E_VALUE_TYPE val_type;
@@ -297,17 +298,17 @@ namespace Freefoil {
             }
         }
         assert(cur_iter == iter_end);
-        return param_shared_ptr_t(new param(val_type, stack_offset_++, val_name, is_ref));
+        return param_descriptor_shared_ptr_t(new param_descriptor(val_type, stack_offset_++, val_name, is_ref));
     }
 
-    params_shared_ptr_list_t script::parse_func_params_list(const iter_t &iter) {
+    param_descriptors_shared_ptr_list_t script::parse_func_param_descriptors_list(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::params_list_ID);
-        params_shared_ptr_list_t params_list;
+        param_descriptors_shared_ptr_list_t param_descriptors_list;
         for (iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter) {
-            params_list.push_back(parse_func_param(cur_iter));
+            param_descriptors_list.push_back(parse_func_param_descriptor(cur_iter));
         }
-        return params_list;
+        return param_descriptors_list;
     }
 
     function_shared_ptr_t script::parse_func_head(const iter_t &iter) {
@@ -333,7 +334,7 @@ namespace Freefoil {
         }
         std::cout << "func_type: " << func_type;
 
-        const function_shared_ptr_t parsed_func = function_shared_ptr_t(new function_descriptor(parse_str(iter->children.begin()+1), func_type, parse_func_params_list(iter->children.begin()+2)));
+        const function_shared_ptr_t parsed_func = function_shared_ptr_t(new function_descriptor(parse_str(iter->children.begin()+1), func_type, parse_func_param_descriptors_list(iter->children.begin()+2)));
 
         if (std::find_if(
                     core_funcs_list_.begin(),
@@ -372,14 +373,12 @@ namespace Freefoil {
             }
 
             for (iter_t cur_iter = iter->children.begin() + 1, iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter) {
+
                 //parse var decl
                 assert(cur_iter->value.id() == freefoil_grammar::var_declare_tail_ID);
                 const std::string var_name(parse_str(cur_iter->children.begin()));
 
                 symbols_handler_->insert(var_name, value_descriptor(var_type, stack_offset_));
-
-                //generate an instruction
-                curr_parsing_function_->add_instruction(instruction(Private::PUSH_SPACE));
 
                 if (cur_iter->children.begin() + 1 != cur_iter->children.end()) {
                     //it is an assign expr
@@ -395,6 +394,7 @@ namespace Freefoil {
 
         case freefoil_grammar::stmt_end_ID:
             break;
+
             //TODO: check for other stmts
         default:
             break;
@@ -499,17 +499,17 @@ namespace Freefoil {
             const string name(parse_str(iter->children.begin()));
             int stack_offset;
             const value_descriptor *the_value_descriptor = symbols_handler_->lookup(name);
-            if (the_value_descriptor != NULL){
-                    stack_offset = the_value_descriptor->get_stack_offset();
-            }else{
-                const params_shared_ptr_list_t::const_iterator suitable_param_iter
+            if (the_value_descriptor != NULL) {
+                stack_offset = the_value_descriptor->get_stack_offset();
+            } else {
+                const param_descriptors_shared_ptr_list_t::const_iterator suitable_param_descriptor_iter
                 = std::find_if(
-                    curr_parsing_function_->get_params().begin(),
-                    curr_parsing_function_->get_params().end(),
-                    boost::bind(&param_has_name_functor, _1, name));
-                if (suitable_param_iter != curr_parsing_function_->get_params().end()){
-                    stack_offset = (*suitable_param_iter)->get_stack_offset();
-                }else{
+                      curr_parsing_function_->get_param_descriptors().begin(),
+                      curr_parsing_function_->get_param_descriptors().end(),
+                      boost::bind(&param_descriptor_has_name_functor, _1, name));
+                if (suitable_param_descriptor_iter != curr_parsing_function_->get_param_descriptors().end()) {
+                    stack_offset = (*suitable_param_descriptor_iter)->get_stack_offset();
+                } else {
                     //error. such variable not presented
                     throw freefoil_exception("unknown ident: " + name);
                 }
@@ -535,14 +535,41 @@ namespace Freefoil {
             break;
 
         case freefoil_grammar::func_call_ID:
-            //TODO:
+            parse_func_call(iter->children.begin());
+            break;
+
+        case freefoil_grammar::boolean_constant_ID:
+            parse_boolean_constant(iter->children.begin());
             break;
 
         default:
             //can't occur
             break;
         }
+    }
 
+    void script::parse_func_call(const iter_t &iter) {
+
+        assert(iter->value.id() == freefoil_grammar::func_call_ID);
+
+        const std::string func_name(parse_str(iter->children.begin()));
+        for (iter_t cur_iter = (iter->children.begin() + 2)->children.begin(), iter_end = (iter->children.begin() + 2)->children.end(); cur_iter != iter_end; ++cur_iter) {
+            //TODO:
+        }
+        //TODO:
+    }
+
+    void script::parse_boolean_constant(const iter_t &iter) {
+
+        assert(iter->value.id() == freefoil_grammar::boolean_constant_ID);
+
+        const std::string boolean_constant_as_str(parse_str(iter));
+        if (boolean_constant_as_str == "true") {
+            curr_parsing_function_->add_instruction(instruction(Private::PUSH_TRUE));
+        } else {
+            assert(boolean_constant_as_str == "false");
+            curr_parsing_function_->add_instruction(instruction(Private::PUSH_FALSE));
+        }
     }
 
     void script::parse_bool_term(const iter_t &iter) {
@@ -631,7 +658,7 @@ namespace Freefoil {
 
     void script::parse_func_body(const iter_t &iter) {
 
-        stack_offset_ = curr_parsing_function_->get_params_count();
+        stack_offset_ = curr_parsing_function_->get_param_descriptors_count();
 
         symbols_handler_.reset(new symbols_handler);
         symbols_handler_->scope_begin();
@@ -650,6 +677,6 @@ namespace Freefoil {
 
     ///////////////////////////////////////////////////////////////////////////////////////
     static tree_parse_info_t build_AST(const iterator_t &iter_begin, const iterator_t &iter_end) {
-        return ast_parse(iter_begin, iter_end, freefoil_grammar(), space_p);
+        return ast_parse<factory_t>(iter_begin, iter_end, freefoil_grammar(), space_p);
     }
 }

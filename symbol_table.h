@@ -22,6 +22,7 @@ namespace Freefoil {
             class binding;
             typedef shared_ptr<binding> binding_shared_ptr;
             typedef vector<binding_shared_ptr> bindings_shared_ptr_vector_t;
+            bindings_shared_ptr_vector_t bindings_;
 
             class binding {
                 friend class symbol_table;
@@ -33,12 +34,12 @@ namespace Freefoil {
                         :name_(the_name), value_descriptor_(the_value_descriptor), next_binding_(the_next_binding) {   }
             };
 
-            bindings_shared_ptr_vector_t bindings_;
+
             static size_t hash(const string &the_string) {
                 size_t result = 0;
-                for (string::const_iterator iter = the_string.begin(), iter_end = the_string.end(); iter != iter_end; ++iter) {
+                for (string::const_iterator cur_iter = the_string.begin(), iter_end = the_string.end(); cur_iter != iter_end; ++cur_iter) {
                     result = result * 65599;
-                    result += static_cast<char>(*iter);
+                    result += static_cast<char>(*cur_iter);
                 }
                 return result;
             }

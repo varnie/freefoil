@@ -1,5 +1,5 @@
-#ifndef PARAM_
-#define PARAM_
+#ifndef param_descriptor_
+#define param_descriptor_
 
 #include "value_descriptor.h"
 #include <boost/shared_ptr.hpp>
@@ -13,11 +13,11 @@ namespace Freefoil{
 		using std::list;
 		using std::string;
 
-		class param : public value_descriptor{
+		class param_descriptor : public value_descriptor{
 			std::string name_;
 			bool is_ref_;
 		public:
-			param(const value_descriptor::E_VALUE_TYPE value_type, const int stack_offset, const string &name = string(), bool is_ref = false)
+			param_descriptor(const value_descriptor::E_VALUE_TYPE value_type, const int stack_offset, const string &name = string(), bool is_ref = false)
 				:value_descriptor(value_type, stack_offset), name_(name), is_ref_(is_ref)
 				{}
 			const string &get_name() const{
@@ -27,9 +27,9 @@ namespace Freefoil{
 				return is_ref_;
 			}
 		};
-		typedef shared_ptr<param> param_shared_ptr_t;
-		typedef std::list<param_shared_ptr_t> params_shared_ptr_list_t;
+		typedef shared_ptr<param_descriptor> param_descriptor_shared_ptr_t;
+		typedef std::list<param_descriptor_shared_ptr_t> param_descriptors_shared_ptr_list_t;
 	}
 }
 
-#endif /*PARAM_*/
+#endif /*param_descriptor_*/

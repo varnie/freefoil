@@ -13,21 +13,18 @@ namespace Freefoil {
 
     using Private::function_shared_ptr_list_t;
     using Private::function_shared_ptr_t;
-    using Private::params_shared_ptr_list_t;
-    using Private::param_shared_ptr_t;
+    using Private::param_descriptors_shared_ptr_list_t;
+    using Private::param_descriptor_shared_ptr_t;
     using Private::iter_t;
     using Private::function_descriptor;
     using Private::OPCODE_KIND;
     using Private::symbols_handler;
-
     using boost::scoped_ptr;
 
     class script {
 
         function_shared_ptr_list_t core_funcs_list_;
         function_shared_ptr_list_t funcs_list_;
-        //symbol_table curr_symbol_table_;
-        //scope_stack curr_scope_stack_;
 
         typedef scoped_ptr<symbols_handler> symbols_handler_scoped_ptr;
         symbols_handler_scoped_ptr symbols_handler_;
@@ -41,8 +38,8 @@ namespace Freefoil {
         void parse_func_impl(const iter_t &iter);
         function_shared_ptr_t parse_func_head(const iter_t &iter);
         void parse_func_body(const iter_t &iter);
-        params_shared_ptr_list_t parse_func_params_list(const iter_t &iter);
-        param_shared_ptr_t parse_func_param(const iter_t &iter);
+        param_descriptors_shared_ptr_list_t parse_func_param_descriptors_list(const iter_t &iter);
+        param_descriptor_shared_ptr_t parse_func_param_descriptor(const iter_t &iter);
         static std::string parse_str(const iter_t &iter);
         void parse_stmt(const iter_t &iter);
         void parse_expr(const iter_t &iter);
@@ -56,6 +53,8 @@ namespace Freefoil {
         void parse_or_tail(const iter_t &iter);
         void parse_and_tail(const iter_t &iter);
         void parse_quoted_string(const iter_t &iter);
+        void parse_boolean_constant(const iter_t &iter);
+        void parse_func_call(const iter_t &iter);
     public:
         script();
         void exec();

@@ -116,7 +116,7 @@ namespace Freefoil {
                 relation_tail_ID,
                 plus_minus_op_ID,
                 mult_divide_op_ID,
-                boolean_constant_ID,
+                bool_constant_ID,
             };
 
             template <typename ScannerT>
@@ -195,14 +195,14 @@ namespace Freefoil {
 
                     mult_divide_op = lexeme_d[ch_p("*") | ch_p("/")];
 
-                    boolean_constant = keyword_p("true") | keyword_p("false");
+                    bool_constant = keyword_p("true") | keyword_p("false");
 
                     factor = func_call
                              | ident
                              | number
                              | quoted_string
                              | no_node_d[ch_p('(')] >> bool_expr >> no_node_d[ch_p(')')]
-                             | boolean_constant
+                             | bool_constant
                     ;
 
                     quoted_string = token_node_d[lexeme_d[confix_p('"', *c_escape_ch_p, '"')]];
@@ -260,7 +260,7 @@ namespace Freefoil {
                 GRAMMAR_RULE(relation_tail_ID) relation_tail;
                 GRAMMAR_RULE(plus_minus_op_ID) plus_minus_op;
                 GRAMMAR_RULE(mult_divide_op_ID) mult_divide_op;
-                GRAMMAR_RULE(boolean_constant_ID) boolean_constant;
+                GRAMMAR_RULE(bool_constant_ID) bool_constant;
             };
         };
     }

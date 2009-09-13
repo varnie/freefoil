@@ -1,4 +1,5 @@
-#include "script.h"
+#include "semantic_analyzer.h.h"
+
 #include "freefoil_grammar.h"
 #include "AST_defs.h"
 #include "exceptions.h"
@@ -7,10 +8,6 @@
 #include <iostream>
 #include <list>
 #include <algorithm>
-#if defined(BOOST_SPIRIT_DUMP_PARSETREE_AS_XML)
-#include <boost/spirit/include/classic_tree_to_xml.hpp>
-#include <map>
-#endif
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
 
@@ -19,9 +16,6 @@
 namespace Freefoil {
 
     using namespace Private;
-
-    static tree_parse_info_t build_AST(const iterator_t &iter_begin, const iterator_t &iter_end);
-    static std::string parse_str(const iter_t &iter);
 
     bool param_descriptors_types_equal_functor(const param_descriptor_shared_ptr_t &param_descriptor, const param_descriptor_shared_ptr_t &the_param_descriptor) {
         return 	param_descriptor->get_value_type() == the_param_descriptor->get_value_type();
@@ -53,93 +47,27 @@ namespace Freefoil {
         return the_param_descriptor->get_name() == the_name;
     }
 
-
-    void script::exec() {
-
-        std::string str;
-        while (getline(std::cin, str)) {
-            if (str == "q") {
-                break;
-            }
-
-            funcs_list_.clear();
-
-            iterator_t iter_begin = str.begin();
-            iterator_t iter_end = str.end();
-
-            tree_parse_info_t info = build_AST(iter_begin, iter_end);
-            if (info.full) {
-                std::cout << "succeeded" << std::endl;
-
-#if defined(BOOST_SPIRIT_DUMP_PARSETREE_AS_XML)
-                // dump parse tree as XML
-                std::map<parser_id, std::string> rule_names;
-                rule_names[freefoil_grammar::script_ID] = "script";
-                rule_names[freefoil_grammar::func_decl_ID] = "func_decl";
-                rule_names[freefoil_grammar::func_impl_ID] = "func_impl";
-                rule_names[freefoil_grammar::ident_ID] = "ident";
-                rule_names[freefoil_grammar::stmt_end_ID] = "stmt_end";
-                rule_names[freefoil_grammar::func_head_ID] = "func_head";
-                rule_names[freefoil_grammar::func_body_ID] = "func_body";
-                rule_names[freefoil_grammar::params_list_ID] = "params_list";
-                rule_names[freefoil_grammar::param_ID] = "param";
-                rule_names[freefoil_grammar::ref_ID] = "ref";
-                rule_names[freefoil_grammar::func_type_ID] = "func_type";
-                rule_names[freefoil_grammar::stmt_ID] = "stmt";
-                rule_names[freefoil_grammar::var_declare_stmt_list_ID] = "var_declare_stmt_list";
-                rule_names[freefoil_grammar::expr_ID] = "expr";
-                rule_names[freefoil_grammar::term_ID] = "term";
-                rule_names[freefoil_grammar::factor_ID] = "factor";
-                rule_names[freefoil_grammar::expr_ID] = "expr";
-                rule_names[freefoil_grammar::number_ID] = "number";
-                rule_names[freefoil_grammar::bool_expr_ID] = "bool_expr";
-                rule_names[freefoil_grammar::bool_term_ID] = "bool_term";
-                rule_names[freefoil_grammar::bool_factor_ID] = "bool_factor";
-                rule_names[freefoil_grammar::bool_relation_ID] = "bool_relation";
-                rule_names[freefoil_grammar::quoted_string_ID] = "quoted_string";
-                rule_names[freefoil_grammar::func_call_ID] = "func_call";
-                rule_names[freefoil_grammar::invoke_args_list_ID] = "invoke_args_list";
-                rule_names[freefoil_grammar::block_ID] = "block";
-                rule_names[freefoil_grammar::var_declare_tail_ID] = "var_declare_tail";
-                rule_names[freefoil_grammar::assign_op_ID] = "assign_op";
-                rule_names[freefoil_grammar::cmp_op_ID] = "cmp_op";
-                rule_names[freefoil_grammar::or_tail_ID] = "or_tail";
-                rule_names[freefoil_grammar::and_tail_ID] = "and_tail";
-                rule_names[freefoil_grammar::relation_tail_ID] = "relation_tail";
-                rule_names[freefoil_grammar::plus_minus_op_ID] = "plus_minus_op";
-                rule_names[freefoil_grammar::mult_divide_op_ID] = "mult_divide_op";
-                rule_names[freefoil_grammar::bool_constant_ID] = "bool_constant";
-
-                tree_to_xml(std::cerr,
-                            info.trees,
-                            "",
-                            rule_names);
-#endif
-
-                parse(info.trees.begin());
-            } else {
-                std::cout << "failed" << std::endl;
-                std::cout << "stopped at: " << *(info.stop) << std::endl;
-            }
-        }
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    semantic_analyzer::semantic_analyzer(): symbols_handler_(NULL), curr_parsing_function_(), stack_offset_(0) {
+        setup_core_funcs();
     }
 
-    void script::parse(const iter_t &iter) {
+    void semantic_analyzer::analyze(const iter_t &iter) {
 
-        std::cout << "parsing begin" << std::endl;
+        std::cout << "semantic analyze begin" << std::endl;
 
         try {
             const parser_id id = iter->value.id();
             assert(id == freefoil_grammar::script_ID || id == freefoil_grammar::func_decl_ID || id == freefoil_grammar::func_impl_ID);
             switch (id.to_long()) {
             case freefoil_grammar::script_ID:
-                parse_script(iter);
+                analyze_script(iter);
                 break;
             case freefoil_grammar::func_decl_ID:
-                parse_func_decl(iter);
+                analyze_func_decl(iter);
                 break;
             case freefoil_grammar::func_impl_ID:
-                parse_func_impl(iter);
+                analyze_func_impl(iter);
                 break;
             default:
                 break;
@@ -171,7 +99,7 @@ namespace Freefoil {
             for (function_shared_ptr_list_t::const_iterator cur_iter = funcs_list_.begin(), iter_end = funcs_list_.end(); cur_iter != iter_end; ++cur_iter) {
                 curr_parsing_function_ = *cur_iter;
                 parse_func_body(curr_parsing_function_->get_body());
-                curr_parsing_function_->print_bytecode_stream();
+//                curr_parsing_function_->print_bytecode_stream();
             }
 
             //TODO:
@@ -180,10 +108,10 @@ namespace Freefoil {
             std::cout << "catched: " << e.what() << std::endl;
         }
 
-        std::cout << "parsing end" << std::endl;
+        std::cout << "semantic analyze end" << std::endl;
     }
 
-    void script::setup_core_funcs() {
+    void semantic_analyzer::setup_core_funcs() {
 
         //TODO: populate core_funcs_list_ with core functions
         param_descriptors_shared_ptr_list_t param_descriptors;
@@ -191,23 +119,19 @@ namespace Freefoil {
         core_funcs_list_.push_back(function_shared_ptr_t (new function_descriptor("foo", function_descriptor::voidType, param_descriptors)));
     }
 
-    script::script() :symbols_handler_(NULL), curr_parsing_function_(), stack_offset_(0) {
-        setup_core_funcs();
-    }
-
-    void script::parse_script(const iter_t &iter) {
+    void semantic_analyzer::analyze_script(const iter_t &iter) {
 
         for (iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter) {
             if (cur_iter->value.id() == freefoil_grammar::func_decl_ID) {
-                parse_func_decl(cur_iter);
+                analyze_func_decl(cur_iter);
             } else {
                 assert(cur_iter->value.id() == freefoil_grammar::func_impl_ID);
-                parse_func_impl(cur_iter);
+                analyze_func_impl(cur_iter);
             }
         }
     }
 
-    void script::parse_func_decl(const iter_t &iter) {
+    void semantic_analyzer::parse_func_decl(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::func_decl_ID);
 
@@ -227,7 +151,7 @@ namespace Freefoil {
         funcs_list_.push_back(parsed_func);
     }
 
-    void script::parse_func_impl(const iter_t &iter) {
+    void semantic_analyzer::parse_func_impl(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::func_impl_ID);
         const function_shared_ptr_t parsed_func = parse_func_head(iter->children.begin());
@@ -302,7 +226,7 @@ namespace Freefoil {
         return param_descriptor_shared_ptr_t(new param_descriptor(val_type, stack_offset_++, val_name, is_ref));
     }
 
-    param_descriptors_shared_ptr_list_t script::parse_func_param_descriptors_list(const iter_t &iter) {
+    param_descriptors_shared_ptr_list_t semantic_analyzer::parse_func_param_descriptors_list(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::params_list_ID);
         param_descriptors_shared_ptr_list_t param_descriptors_list;
@@ -312,7 +236,7 @@ namespace Freefoil {
         return param_descriptors_list;
     }
 
-    function_shared_ptr_t script::parse_func_head(const iter_t &iter) {
+    function_shared_ptr_t semantic_analyzer::parse_func_head(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::func_head_ID);
         assert(iter->children.size() == 3);
@@ -347,7 +271,7 @@ namespace Freefoil {
         return parsed_func;
     }
 
-    void script::parse_stmt(const iter_t &iter) {
+    void semantic_analyzer::parse_stmt(const iter_t &iter) {
 
         switch (iter->value.id().to_long()) {
         case freefoil_grammar::block_ID: {
@@ -383,28 +307,7 @@ namespace Freefoil {
 
                 if (cur_iter->children.begin() + 1 != cur_iter->children.end()) {
                     //it is an assign expr
-                    const value_descriptor::E_VALUE_TYPE value_type2 = parse_bool_expr(cur_iter->children.begin() + 2);
-                    if (var_type != value_type2) {
-                        if (var_type == value_descriptor::intType) {
-                            if (value_type2 == value_descriptor::floatType) {
-                                std::cout << "attention: casting from float to int";
-                            } else if (value_type2 == value_descriptor::boolType) {
-                                curr_parsing_function_->add_instruction(instruction(Private::CAST_BOOL_TO_INT));
-                            } else {
-                                throw freefoil_exception("impossible operation");
-                            }
-                        } else if (var_type == value_descriptor::floatType) {
-                            if (value_type2 == value_descriptor::intType) {
-                                ;
-                            } else if (value_type2 == value_descriptor::boolType) {
-                                curr_parsing_function_->add_instruction(instruction(Private::CAST_BOOL_TO_INT));
-                            } else {
-                                throw freefoil_exception("impossible operation");
-                            }
-                        } else {
-                            throw freefoil_exception("impossible operation");
-                        }
-                    }
+                    parse_bool_expr(cur_iter->children.begin() + 2);
 
                     curr_parsing_function_->add_instruction(instruction(Private::STORE_VAR));
                     curr_parsing_function_->add_instruction(instruction(Private::GET_VAR_INDEX, stack_offset_));
@@ -423,34 +326,24 @@ namespace Freefoil {
         }
     }
 
-    value_descriptor::E_VALUE_TYPE script::parse_bool_expr(const iter_t &iter) {
+    void semantic_analyzer::parse_bool_expr(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::bool_expr_ID);
 
-        value_descriptor::E_VALUE_TYPE value_type1 = parse_bool_term(iter->children.begin());
+        parse_bool_term(iter->children.begin());
         if (iter->children.begin() + 1 != iter->children.end()) {
-            value_descriptor::E_VALUE_TYPE value_type2 = parse_or_tail(iter->children.begin() + 1);
-            if (value_type1 != value_descriptor::boolType and value_type2 != value_descriptor::boolType) {
-                throw freefoil_exception("impossible operation");
-            } else {
-                return value_descriptor::boolType;
-            }
-        } else {
-            return value_type1;
+            parse_or_tail(iter->children.begin() + 1);
         }
     }
 
-    value_descriptor::E_VALUE_TYPE script::parse_or_tail(const iter_t &iter) {
+    void semantic_analyzer::parse_or_tail(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::or_tail_ID);
 
         for (iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end(); cur_iter != iter_end; ) {
 
             const std::string or_operation_as_str(parse_str(cur_iter++));
-            value_descriptor::E_VALUE_TYPE value_type = parse_bool_term(cur_iter++);
-            if (value_type != value_descriptor::boolType) {
-                throw freefoil_exception("impossible operation");
-            }
+            parse_bool_term(cur_iter++);
             if (or_operation_as_str == "or") {
                 curr_parsing_function_->add_instruction(instruction(Private::OR_OP));
             } else {
@@ -458,148 +351,80 @@ namespace Freefoil {
                 curr_parsing_function_->add_instruction(instruction(Private::XOR_OP));
             }
         }
-        return value_descriptor::boolType;
     }
 
-    value_descriptor::E_VALUE_TYPE script::parse_and_tail(const iter_t &iter) {
+    void semantic_analyzer::parse_and_tail(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::and_tail_ID);
         assert(parse_str(iter->children.begin()) == "and");
 
         iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end();
         while (cur_iter != iter_end && parse_str(cur_iter) == "and") {
-            value_descriptor::E_VALUE_TYPE value_type = parse_bool_factor(++cur_iter);
-            if (value_type != value_descriptor::boolType) {
-                throw freefoil_exception("impossible operation");
-            }
+            parse_bool_factor(++cur_iter);
             curr_parsing_function_->add_instruction(instruction(Private::AND_OP));
         }
-        return value_descriptor::boolType;
     }
 
-    value_descriptor::E_VALUE_TYPE script::parse_expr(const iter_t &iter) {
+    void semantic_analyzer::parse_expr(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::expr_ID);
 
         const bool has_unary_plus_minus_op = iter->children.begin()->value.id() == freefoil_grammar::plus_minus_op_ID;
         iter_t cur_iter = has_unary_plus_minus_op ? iter->children.begin() + 1 : iter->children.begin();
         const iter_t iter_end = iter->children.end();
-        value_descriptor::E_VALUE_TYPE value_type1 = parse_term(cur_iter++);
+        parse_term(cur_iter++);
 
         while (cur_iter != iter_end) {
             assert(cur_iter->value.id() == freefoil_grammar::plus_minus_op_ID);
-            value_descriptor::E_VALUE_TYPE value_type2;
             if (parse_str(cur_iter) == "+") {
-                value_type2 = parse_term(++cur_iter);
+                parse_term(++cur_iter);
                 curr_parsing_function_->add_instruction(instruction(Private::PLUS_OP));
             } else {
                 assert(parse_str(cur_iter) == "-");
-                value_type2 = parse_term(++cur_iter);
+                parse_term(++cur_iter);
                 curr_parsing_function_->add_instruction(instruction(Private::MINUS_OP));
             }
-            if (value_type1 == value_descriptor::stringType and value_type2 == value_descriptor::stringType) {
-                ;
-            } else {
-                if (value_type1 == value_descriptor::intType) {
-                    if (value_type2 == value_descriptor::intType) {
-                        ;
-                    } else if (value_type2 == value_descriptor::floatType) {
-                        value_type1 = value_descriptor::floatType;
-                    } else {
-                        throw freefoil_exception("impossible operation");
-                    }
-                } else if (value_type1 == value_descriptor::floatType) {
-                    if (value_type2 == value_descriptor::floatType) {
-                        ;
-                    } else if (value_type2 == value_descriptor::intType) {
-                        ;
-                    } else {
-                        throw freefoil_exception("impossible operation");
-                    }
-                } else {
-                    throw freefoil_exception("impossible operation");
-                }
-            }
-
             ++cur_iter;
         }
 
         if (has_unary_plus_minus_op) {
-            if (value_type1 != value_descriptor::intType and value_type1 != value_descriptor::floatType) {
-                throw freefoil_exception("impossible operation");
-            }
             if (parse_str(iter->children.begin()) == "-") {
                 curr_parsing_function_->add_instruction(instruction(Private::NEGATE_OP));
             }
         }
-
-        return value_type1;
     }
 
-    value_descriptor::E_VALUE_TYPE script::parse_term(const iter_t &iter) {
+    void semantic_analyzer::parse_term(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::term_ID);
 
         iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end();
-        value_descriptor::E_VALUE_TYPE value_type1 = parse_factor(cur_iter++);
+        parse_factor(cur_iter++);
 
         while (cur_iter != iter_end) {
             assert(cur_iter->value.id() == freefoil_grammar::mult_divide_op_ID);
-            value_descriptor::E_VALUE_TYPE value_type2;
             if (parse_str(cur_iter) == "*") {
-                value_type2 = parse_factor(++cur_iter);
-                if (value_type1 == value_descriptor::intType) {
-                    if (value_type2 == value_descriptor::intType) {
-                        ;
-                    } else if (value_type2 == value_descriptor::floatType) {
-                        value_type1 = value_descriptor::floatType;
-                    } else {
-                        throw freefoil_exception("impossible operation");
-                    }
-                } else if (value_type1 == value_descriptor::floatType) {
-                    if (value_type2 == value_descriptor::intType) {
-                        ;
-                    } else if (value_type2 == value_descriptor::floatType) {
-                        ;
-                    } else {
-                        throw freefoil_exception("impossible operation");
-                    }
-                } else {
-                    throw freefoil_exception("impossible operation");
-                }
+                parse_factor(++cur_iter);
                 curr_parsing_function_->add_instruction(instruction(Private::MULT_OP));
             } else {
                 assert(parse_str(cur_iter) == "/");
-                value_type2 = parse_factor(++cur_iter);
-                if (value_type1 != value_descriptor::intType and value_type1 != value_descriptor::floatType
-                        and value_type2 != value_descriptor::intType and value_type2 != value_descriptor::floatType ) {
-                    throw freefoil_exception("impossible operation");
-                } else {
-                    value_type1 = value_descriptor::floatType;
-                }
-
+                parse_factor(++cur_iter);
                 curr_parsing_function_->add_instruction(instruction(Private::DIVIDE_OP));
             }
-
             ++cur_iter;
         }
-
-        return value_type1;
     }
 
-    value_descriptor::E_VALUE_TYPE script::parse_factor(const iter_t &iter) {
+    void semantic_analyzer::parse_factor(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::factor_ID);
 
         switch (iter->children.begin()->value.id().to_long()) {
         case freefoil_grammar::ident_ID: {
-
             const string name(parse_str(iter->children.begin()));
             int stack_offset;
-            value_descriptor::E_VALUE_TYPE value_type1;
-            value_descriptor *the_value_descriptor = symbols_handler_->lookup(name);
+            const value_descriptor *the_value_descriptor = symbols_handler_->lookup(name);
             if (the_value_descriptor != NULL) {
-                value_type1 = the_value_descriptor->get_value_type();
                 stack_offset = the_value_descriptor->get_stack_offset();
             } else {
                 const param_descriptors_shared_ptr_list_t::const_iterator suitable_param_descriptor_iter
@@ -608,7 +433,6 @@ namespace Freefoil {
                       curr_parsing_function_->get_param_descriptors().end(),
                       boost::bind(&param_descriptor_has_name_functor, _1, name));
                 if (suitable_param_descriptor_iter != curr_parsing_function_->get_param_descriptors().end()) {
-                    value_type1 = (*suitable_param_descriptor_iter)->get_value_type();
                     stack_offset = (*suitable_param_descriptor_iter)->get_stack_offset();
                 } else {
                     //error. such variable not presented
@@ -618,35 +442,38 @@ namespace Freefoil {
 
             curr_parsing_function_->add_instruction(instruction(Private::LOAD_VAR));
             curr_parsing_function_->add_instruction(instruction(Private::GET_VAR_INDEX, stack_offset));
-            return value_type1;
+            break;
         }
 
         case freefoil_grammar::number_ID: {
-            return parse_number(iter->children.begin());
+            parse_number(iter->children.begin());
+            break;
         }
 
         case freefoil_grammar::quoted_string_ID: {
-            return parse_quoted_string(iter->children.begin());
+            parse_quoted_string(iter->children.begin());
             break;
         }
 
         case freefoil_grammar::bool_expr_ID:
-            return parse_bool_expr(iter->children.begin());
+            parse_bool_expr(iter->children.begin());
+            break;
 
         case freefoil_grammar::func_call_ID:
-            return parse_func_call(iter->children.begin());
+            parse_func_call(iter->children.begin());
+            break;
 
-        case freefoil_grammar::bool_constant_ID:
-            return parse_bool_constant(iter->children.begin());
+        case freefoil_grammar::boolean_constant_ID:
+            parse_boolean_constant(iter->children.begin());
+            break;
 
         default:
             //can't occur
-            throw freefoil_exception("impossible operation");
+            break;
         }
     }
 
-//TODO:
-    value_descriptor::E_VALUE_TYPE script::parse_func_call(const iter_t &iter) {
+    void semantic_analyzer::parse_func_call(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::func_call_ID);
 
@@ -655,13 +482,11 @@ namespace Freefoil {
             //TODO:
         }
         //TODO:
-
-        return value_descriptor::intType;
     }
 
-    value_descriptor::E_VALUE_TYPE script::parse_bool_constant(const iter_t &iter) {
+    void semantic_analyzer::parse_boolean_constant(const iter_t &iter) {
 
-        assert(iter->value.id() == freefoil_grammar::bool_constant_ID);
+        assert(iter->value.id() == freefoil_grammar::boolean_constant_ID);
 
         const std::string boolean_constant_as_str(parse_str(iter));
         if (boolean_constant_as_str == "true") {
@@ -670,90 +495,64 @@ namespace Freefoil {
             assert(boolean_constant_as_str == "false");
             curr_parsing_function_->add_instruction(instruction(Private::PUSH_FALSE));
         }
-        return value_descriptor::boolType;
     }
 
-    value_descriptor::E_VALUE_TYPE script::parse_bool_term(const iter_t &iter) {
+    void semantic_analyzer::parse_bool_term(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::bool_term_ID);
 
-        value_descriptor::E_VALUE_TYPE value_type1 = parse_bool_factor(iter->children.begin());
+        parse_bool_factor(iter->children.begin());
         if (iter->children.begin() + 1 != iter->children.end()) {
-            value_descriptor::E_VALUE_TYPE value_type2 = parse_and_tail(iter->children.begin() + 1);
-            if (value_type1 != value_descriptor::boolType and value_type2 != value_descriptor::boolType) {
-                throw freefoil_exception("impossible operation");
-            } else {
-                return value_descriptor::boolType;
-            }
-        } else {
-            return value_type1;
+            parse_and_tail(iter->children.begin() + 1);
         }
     }
 
-    value_descriptor::E_VALUE_TYPE script::parse_bool_factor(const iter_t &iter) {
+    void semantic_analyzer::parse_bool_factor(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::bool_factor_ID);
 
         const bool negate = (parse_str(iter->children.begin()) == "not");
-        const value_descriptor::E_VALUE_TYPE value_type = parse_bool_relation(negate ? iter->children.begin() + 1 : iter->children.begin());
+        parse_bool_relation(negate ? iter->children.begin() + 1 : iter->children.begin());
         if (negate) {
-            if (value_type != value_descriptor::boolType && value_type != value_descriptor::intType) {
-                throw freefoil_exception("impossible operation");
-            }
             curr_parsing_function_->add_instruction(instruction(Private::NOT_OP));
-            return value_type;
-        } else {
-            return value_type;
         }
     }
 
-    value_descriptor::E_VALUE_TYPE script::parse_bool_relation(const iter_t &iter) {
+    void semantic_analyzer::parse_bool_relation(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::bool_relation_ID);
 
         iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end();
-        value_descriptor::E_VALUE_TYPE value_type1 = parse_expr(cur_iter++);
-        if (cur_iter == iter_end) {
-            return value_type1;
-        } else {
-            value_descriptor::E_VALUE_TYPE value_type2;
-            while (cur_iter != iter_end) {
-                assert(cur_iter->value.id() == freefoil_grammar::relation_tail_ID);
-                const std::string relation_op_as_str(parse_str(cur_iter));
+        parse_expr(cur_iter++);
 
-                if (relation_op_as_str == "==") {
-                    value_type2 = parse_expr(++cur_iter);
-                    curr_parsing_function_->add_instruction(instruction(Private::EQUAL_OP));
-                } else if (relation_op_as_str == "!=") {
-                    value_type2 = parse_expr(++cur_iter);
-                    curr_parsing_function_->add_instruction(instruction(Private::NOT_EQUAL_OP));
-                } else if (relation_op_as_str == "<=") {
-                    value_type2 = parse_expr(++cur_iter);
-                    curr_parsing_function_->add_instruction(instruction(Private::LESS_OR_EQUAL_OP));
-                } else if (relation_op_as_str == ">=") {
-                    value_type2 = parse_expr(++cur_iter);
-                    curr_parsing_function_->add_instruction(instruction(Private::GREATER_OR_EQUAL_OP));
-                } else if (relation_op_as_str == "<") {
-                    value_type2 = parse_expr(++cur_iter);
-                    curr_parsing_function_->add_instruction(instruction(Private::LESS_OP));
-                } else {
-                    assert(relation_op_as_str == ">");
-                    value_type2 = parse_expr(++cur_iter);
-                    curr_parsing_function_->add_instruction(instruction(Private::GREATER_OP));
-                }
+        while (cur_iter != iter_end) {
+            assert(cur_iter->value.id() == freefoil_grammar::relation_tail_ID);
+            const std::string relation_op_as_str(parse_str(cur_iter));
 
-                if (value_type1 != value_type2) {
-                    throw freefoil_exception("impossible operation");
-                }
-
-                value_type1 = value_descriptor::boolType;
+            if (relation_op_as_str == "==") {
+                parse_expr(++cur_iter);
+                curr_parsing_function_->add_instruction(instruction(Private::EQUAL_OP));
+            } else if (relation_op_as_str == "!=") {
+                parse_expr(++cur_iter);
+                curr_parsing_function_->add_instruction(instruction(Private::NOT_EQUAL_OP));
+            } else if (relation_op_as_str == "<=") {
+                parse_expr(++cur_iter);
+                curr_parsing_function_->add_instruction(instruction(Private::LESS_OR_EQUAL_OP));
+            } else if (relation_op_as_str == ">=") {
+                parse_expr(++cur_iter);
+                curr_parsing_function_->add_instruction(instruction(Private::GREATER_OR_EQUAL_OP));
+            } else if (relation_op_as_str == "<") {
+                parse_expr(++cur_iter);
+                curr_parsing_function_->add_instruction(instruction(Private::LESS_OP));
+            } else {
+                assert(relation_op_as_str == ">");
+                parse_expr(++cur_iter);
+                curr_parsing_function_->add_instruction(instruction(Private::GREATER_OP));
             }
-
-            return value_descriptor::boolType;
         }
     }
 
-    value_descriptor::E_VALUE_TYPE script::parse_number(const iter_t &iter) {
+    void semantic_analyzer::parse_number(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::number_ID);
 
@@ -763,19 +562,15 @@ namespace Freefoil {
             const std::size_t index = curr_parsing_function_->add_float_constant(boost::lexical_cast<float>(number_as_str));
             curr_parsing_function_->add_instruction(instruction(Private::GET_FLOAT_CONST));
             curr_parsing_function_->add_instruction(instruction(Private::GET_INDEX_OF_CONST, (int)index));
-
-            return value_descriptor::floatType;
         } else {
             //it is int value
             const std::size_t index = curr_parsing_function_->add_int_constant(boost::lexical_cast<int>(number_as_str));
             curr_parsing_function_->add_instruction(instruction(Private::GET_INT_CONST));
             curr_parsing_function_->add_instruction(instruction(Private::GET_INDEX_OF_CONST, (int)index));
-
-            return value_descriptor::intType;
         }
     }
 
-    value_descriptor::E_VALUE_TYPE script::parse_quoted_string(const iter_t &iter) {
+    void semantic_analyzer::parse_quoted_string(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::quoted_string_ID);
         const std::string quoted_string(parse_str(iter));
@@ -784,11 +579,9 @@ namespace Freefoil {
         const std::size_t index = curr_parsing_function_->add_string_constant(str_value_without_quotes);
         curr_parsing_function_->add_instruction(instruction(Private::GET_STRING_CONST));
         curr_parsing_function_->add_instruction(instruction(Private::GET_INDEX_OF_CONST, (int)index));
-
-        return value_descriptor::stringType;
     }
 
-    void script::parse_func_body(const iter_t &iter) {
+    void semantic_analyzer::parse_func_body(const iter_t &iter) {
 
         stack_offset_ = curr_parsing_function_->get_param_descriptors_count();
 
@@ -803,27 +596,12 @@ namespace Freefoil {
         symbols_handler_->scope_end();
     }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-    static std::string parse_str(const iter_t &iter) {
+    std::string semantic_analyzer::parse_str(const iter_t &iter) {
         return std::string(iter->value.begin(), iter->value.end());
     }
 
+    ///////////////////////////////////////////////////////////////////////////////////////
     static tree_parse_info_t build_AST(const iterator_t &iter_begin, const iterator_t &iter_end) {
         return ast_parse<factory_t>(iter_begin, iter_end, freefoil_grammar(), space_p);
     }
-
-    /*possible casts: int -> int
-                      int -> string
-
-                      float -> float
-                      float -> string
-
-                      bool -> bool
-                      bool -> string
-
-                      string -> string
-                      string -> int
-                      string -> bool
-                      string -> float
-    */
 }

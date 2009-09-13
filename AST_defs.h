@@ -13,26 +13,7 @@ namespace Freefoil {
         using BOOST_SPIRIT_CLASSIC_NS::tree_parse_info;
         using BOOST_SPIRIT_CLASSIC_NS::ast_parse;
 
-        struct node_info {
-            union {
-                unsigned char function_index;
-                unsigned char stack_offset;
-            };
-            enum E_CONVERT {
-                NONE = -1,
-                INT_TO_STR,
-                INT_TO_FLOAT,
-                INT_TO_BOOL,
-                FLOAT_TO_STR,
-                BOOL_TO_STR,
-                BOOL_TO_INT
-            };
-            E_CONVERT convert;
-            node_info():convert(NONE)
-            {}
-        };
-
-        typedef node_val_data_factory<node_info> factory_t;
+        typedef node_val_data_factory<> factory_t;
         typedef string::const_iterator iterator_t;
         typedef tree_match<iterator_t, factory_t> tree_match_t;
         typedef tree_match_t::tree_iterator iter_t;

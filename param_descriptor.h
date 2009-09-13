@@ -1,7 +1,7 @@
 #ifndef param_descriptor_
 #define param_descriptor_
 
-#include "value_descriptor.h"
+#include "AST_defs.h"
 #include <boost/shared_ptr.hpp>
 #include <list>
 #include <string>
@@ -17,7 +17,7 @@ namespace Freefoil{
 			std::string name_;
 			bool is_ref_;
 		public:
-			param_descriptor(const value_descriptor::E_VALUE_TYPE value_type, const int stack_offset, const string &name = string(), bool is_ref = false)
+			param_descriptor(const E_VALUE_TYPE value_type, const int stack_offset, const string &name = string(), bool is_ref = false)
 				:value_descriptor(value_type, stack_offset), name_(name), is_ref_(is_ref)
 				{}
 			const string &get_name() const{

@@ -65,7 +65,7 @@ namespace Freefoil {
 			    return iter_body_;
 			}
 
-			inline void add_instruction(const instruction &instr){
+			void add_instruction(const instruction &instr){
 			    bytecode_stream_.push_back(instr);
 			}
 

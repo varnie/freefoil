@@ -14,8 +14,6 @@
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
 
-
-
 namespace Freefoil {
 
     using namespace Private;
@@ -67,9 +65,9 @@ namespace Freefoil {
             iterator_t iter_begin = str.begin();
             iterator_t iter_end = str.end();
 
-            tree_parse_info_t info = build_AST(iter_begin, iter_end);
-            if (info.full) {
-                std::cout << "succeeded" << std::endl;
+            std::string message;
+            try {
+                tree_parse_info_t info = build_AST(iter_begin, iter_end);
 
 #if defined(BOOST_SPIRIT_DUMP_PARSETREE_AS_XML)
                 // dump parse tree as XML
@@ -115,11 +113,56 @@ namespace Freefoil {
                             "",
                             rule_names);
 #endif
-
                 parse(info.trees.begin());
-            } else {
-                std::cout << "failed" << std::endl;
-                std::cout << "stopped at: " << *(info.stop) << std::endl;
+            } catch (const freefoil_grammar::parser_error_t &e) {
+                switch (e.descriptor) {
+                case Private::bool_expr_expected_error:
+                    message = "bool expression expected";
+                    break;
+                case Private::bool_factor_expected_error:
+                    message = "bool factor expected";
+                    break;
+                case Private::closed_block_expected_error:
+                    message = "closed block expected";
+                    break;
+                case Private::closed_bracket_expected_error:
+                    message = "closed bracket expected";
+                    break;
+                case Private::data_expected_error:
+                    message = "unexpected end";
+                    break;
+                case Private::expr_expected_error:
+                    message = "expression expected";
+                    break;
+                case Private::factor_expected_error:
+                    message = "factor expected";
+                    break;
+                case Private::ident_expected_error:
+                    message = "identificator expected";
+                    break;
+                case Private::open_block_expected_error:
+                    message = "open block expected";
+                    break;
+                case Private::open_bracket_expected_error:
+                    message = "open bracket expected";
+                    break;
+                case Private::relation_expected_error:
+                    message = "relation expected";
+                    break;
+                case Private::stmt_end_expected_error:
+                    message = "statement end expected";
+                    break;
+                case Private::term_expected_error:
+                    message = "term expected error";
+                    break;
+                default:
+                    message = "unknown parse error";
+                    break;
+                }
+            }
+
+            if (!message.empty()) {
+                std::cout << message << std::endl;
             }
         }
     }
@@ -389,7 +432,7 @@ namespace Freefoil {
                             if (value_type2 == value_descriptor::floatType) {
                                 std::cout << "attention: casting from float to int";
                             } else if (value_type2 == value_descriptor::boolType) {
-                                curr_parsing_function_->add_instruction(instruction(Private::CAST_BOOL_TO_INT));
+                                ;
                             } else {
                                 throw freefoil_exception("impossible operation");
                             }
@@ -397,7 +440,7 @@ namespace Freefoil {
                             if (value_type2 == value_descriptor::intType) {
                                 ;
                             } else if (value_type2 == value_descriptor::boolType) {
-                                curr_parsing_function_->add_instruction(instruction(Private::CAST_BOOL_TO_INT));
+                                ;
                             } else {
                                 throw freefoil_exception("impossible operation");
                             }
@@ -812,16 +855,11 @@ namespace Freefoil {
         return ast_parse<factory_t>(iter_begin, iter_end, freefoil_grammar(), space_p);
     }
 
-    /*possible casts: int -> int
-                      int -> string
+    /*possible implicit casts:
 
-                      float -> float
-                      float -> string
-
-                      bool -> bool
                       bool -> string
+                      bool -> int
 
-                      string -> string
                       string -> int
                       string -> bool
                       string -> float

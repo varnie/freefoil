@@ -33,9 +33,6 @@ namespace Freefoil {
             GREATER_OP,
             LESS_OR_EQUAL_OP,
             GREATER_OR_EQUAL_OP,
-            CAST_BOOL_TO_INT,
-            CAST_BOOL_TO_STRING,
-            CAST_FLOAT_TO_STRING,
             CAST_INT_TO_STRING,
             //TODO: add other opcodes
         };

@@ -159,10 +159,17 @@ namespace Freefoil {
                     message = "unknown parse error";
                     break;
                 }
+/*
+                for (int i = 0, count = e.where - iter_begin; i < count; ++i){
+                    ++error_iter;
+                }
+*/
             }
 
             if (!message.empty()) {
                 std::cout << message << std::endl;
+
+//                std::cout << error_iter.get_currentline() << std::endl;
             }
         }
     }

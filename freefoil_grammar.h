@@ -74,8 +74,6 @@ namespace Freefoil {
                 ("or")
                 ("and")
                 ("not")
-
-                //TODO: add all the left keywords
                 ;
             }
         };
@@ -146,7 +144,7 @@ namespace Freefoil {
                     assertion_t expected_term(Private::term_expected_error);
                     assertion_t expected_factor(Private::factor_expected_error);
 
-                    script = *(func_decl | func_impl) >> no_node_d[eps_p];
+                    script = *(func_impl | func_decl) >> no_node_d[eps_p];
 
                     ident = lexeme_d[
                                 token_node_d[
@@ -175,8 +173,8 @@ namespace Freefoil {
                     func_call = ident >> gen_pt_node_d[invoke_args_list];
 
                     invoke_args_list = no_node_d[ch_p('(')]
-                                 >> !(gen_pt_node_d[bool_expr] >> *(no_node_d[ch_p(',')] >> gen_pt_node_d[bool_expr]))
-                                 >> no_node_d[ch_p(')')];
+                                 >> !(gen_pt_node_d[bool_expr] >> *(no_node_d[ch_p(',')] >> expected_data(gen_pt_node_d[bool_expr])))
+                                 >> expected_closed_bracket(no_node_d[ch_p(')')]);
 
                     param = var_type >> !ref >> !ident;
 
@@ -188,7 +186,7 @@ namespace Freefoil {
 
                     ref = keyword_p("ref");
 
-                    var_declare_stmt_list = var_type >> expected_data(gen_pt_node_d[var_declare_tail] >> *(no_node_d[ch_p(',')] >> expected_data(gen_pt_node_d[var_declare_tail])) >> expected_stmt_end(no_node_d[stmt_end]));
+                    var_declare_stmt_list = var_type >> expected_data(gen_pt_node_d[var_declare_tail] >> *(no_node_d[ch_p(',')] >> expected_data(gen_pt_node_d[var_declare_tail])) >> no_node_d[stmt_end]);
 
                     var_declare_tail = ident >> !(assign_op >> expected_bool_expr(gen_pt_node_d[bool_expr]));
 
@@ -236,7 +234,8 @@ namespace Freefoil {
                         stmt_end |
                         var_declare_stmt_list |
                         func_call >> no_node_d[stmt_end] |
-                        gen_pt_node_d[block]; //TODO: add other alternatives
+                        gen_pt_node_d[block];
+                        //TODO: add other alternatives
 
                     block = gen_ast_node_d[no_node_d[ch_p('{')] >> *stmt >>expected_closed_block(no_node_d[ch_p('}')])];
 

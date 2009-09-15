@@ -14,7 +14,7 @@ namespace Freefoil {
         using BOOST_SPIRIT_CLASSIC_NS::ast_parse;
 
         typedef node_val_data_factory<> factory_t;
-        typedef string::const_iterator iterator_t;
+        typedef std::string::const_iterator iterator_t;
         typedef tree_match<iterator_t, factory_t> tree_match_t;
         typedef tree_match_t::tree_iterator iter_t;
         typedef tree_match_t::node_t node_t;

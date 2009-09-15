@@ -59,15 +59,12 @@ namespace Freefoil {
             if (str == "q") {
                 break;
             }
+            if (!funcs_list_.empty()) {
+                funcs_list_.clear();
+            }
 
-            funcs_list_.clear();
-
-            iterator_t iter_begin = str.begin();
-            iterator_t iter_end = str.end();
-
-            std::string message;
             try {
-                tree_parse_info_t info = build_AST(iter_begin, iter_end);
+                tree_parse_info_t info = build_AST(iterator_t(str.begin(), str.end()), iterator_t());
 
 #if defined(BOOST_SPIRIT_DUMP_PARSETREE_AS_XML)
                 // dump parse tree as XML
@@ -115,61 +112,56 @@ namespace Freefoil {
 #endif
                 parse(info.trees.begin());
             } catch (const freefoil_grammar::parser_error_t &e) {
+                std::string error_msg;
+
                 switch (e.descriptor) {
                 case Private::bool_expr_expected_error:
-                    message = "bool expression expected";
+                    error_msg = "bool expression expected";
                     break;
                 case Private::bool_factor_expected_error:
-                    message = "bool factor expected";
+                    error_msg = "bool factor expected";
                     break;
                 case Private::closed_block_expected_error:
-                    message = "closed block expected";
+                    error_msg = "closed block expected";
                     break;
                 case Private::closed_bracket_expected_error:
-                    message = "closed bracket expected";
+                    error_msg = "closed bracket expected";
                     break;
                 case Private::data_expected_error:
-                    message = "unexpected end";
+                    error_msg = "unexpected end";
                     break;
                 case Private::expr_expected_error:
-                    message = "expression expected";
+                    error_msg = "expression expected";
                     break;
                 case Private::factor_expected_error:
-                    message = "factor expected";
+                    error_msg = "factor expected";
                     break;
                 case Private::ident_expected_error:
-                    message = "identificator expected";
+                    error_msg = "identificator expected";
                     break;
                 case Private::open_block_expected_error:
-                    message = "open block expected";
+                    error_msg = "open block expected";
                     break;
                 case Private::open_bracket_expected_error:
-                    message = "open bracket expected";
+                    error_msg = "open bracket expected";
                     break;
                 case Private::relation_expected_error:
-                    message = "relation expected";
+                    error_msg = "relation expected";
                     break;
                 case Private::stmt_end_expected_error:
-                    message = "statement end expected";
+                    error_msg = "statement end expected";
                     break;
                 case Private::term_expected_error:
-                    message = "term expected error";
+                    error_msg = "term expected error";
                     break;
                 default:
-                    message = "unknown parse error";
+                    error_msg = "unknown parse error";
                     break;
                 }
-/*
-                for (int i = 0, count = e.where - iter_begin; i < count; ++i){
-                    ++error_iter;
-                }
-*/
-            }
 
-            if (!message.empty()) {
-                std::cout << message << std::endl;
-
-//                std::cout << error_iter.get_currentline() << std::endl;
+                const iterator_t iter = e.where;
+                std::cout << "[" << iter.get_position().line << ":" << iter.get_position().column << "] ";
+                std::cout << error_msg << std::endl;
             }
         }
     }
@@ -425,7 +417,7 @@ namespace Freefoil {
 
             for (iter_t cur_iter = iter->children.begin() + 1, iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter) {
 
-                //parse var decl
+                //parse var declare tails
                 assert(cur_iter->value.id() == freefoil_grammar::var_declare_tail_ID);
                 const std::string var_name(parse_str(cur_iter->children.begin()));
 

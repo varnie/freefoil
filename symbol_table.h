@@ -53,7 +53,7 @@ namespace Freefoil {
             }
 
             size_t insert(const string &the_name, const value_descriptor& the_value_descriptor) {
-                const size_t index = hash(the_name);
+                const size_t index = hash(the_name) % SIZE;
                 bindings_[index] = binding_shared_ptr(new binding(the_name, the_value_descriptor, bindings_[index]));
                 return index;
             }

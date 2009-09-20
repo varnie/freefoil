@@ -144,6 +144,7 @@ namespace Freefoil {
                     assertion_t expected_expr(Private::expr_expected_error);
                     assertion_t expected_term(Private::term_expected_error);
                     assertion_t expected_factor(Private::factor_expected_error);
+                    assertion_t expected_bool_term(Private::term_expected_error);
 
                     script = *(func_impl | func_decl) >> no_node_d[eps_p];
 
@@ -197,7 +198,7 @@ namespace Freefoil {
 
                     bool_expr = gen_pt_node_d[bool_term] >> or_tail;
 
-                    or_tail = *(str_p("or") >> gen_pt_node_d[bool_term]);
+                    or_tail = *((str_p("or") | str_p("xor"))>> expected_bool_term(gen_pt_node_d[bool_term]));
 
                     bool_term = gen_pt_node_d[bool_factor] >> and_tail;
 

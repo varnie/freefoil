@@ -25,6 +25,8 @@ namespace Freefoil {
 
     class script {
 
+        std::size_t errors_count_;
+
         function_shared_ptr_list_t core_funcs_list_;
         function_shared_ptr_list_t funcs_list_;
 
@@ -56,6 +58,8 @@ namespace Freefoil {
         value_descriptor::E_VALUE_TYPE  parse_quoted_string(const iter_t &iter);
         value_descriptor::E_VALUE_TYPE  parse_bool_constant(const iter_t &iter);
         value_descriptor::E_VALUE_TYPE  parse_func_call(const iter_t &iter);
+        void print_error(const iter_t &iter, const std::string &msg);
+        void print_error(const std::string &msg);
     public:
         script();
         void exec();

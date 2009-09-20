@@ -10,6 +10,7 @@
 #include <boost/spirit/include/classic_utility.hpp>
 #include <boost/spirit/include/classic_exceptions.hpp>
 
+#include "AST_defs.h"
 #include "errors.h"
 
 #define GRAMMAR_RULE(RULE_ID) rule<ScannerT, parser_context<>, parser_tag<RULE_ID> >

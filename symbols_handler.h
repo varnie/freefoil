@@ -47,13 +47,15 @@ namespace Freefoil {
                 }
             }
 
-            void insert(const std::string &the_name, const value_descriptor &the_value_descriptor) {
+            bool insert(const std::string &the_name, const value_descriptor &the_value_descriptor) {
 
                 const std::size_t bucket_index = symbol_table_->insert(the_name, the_value_descriptor);
                 if (std::find(last_entry_start_iter_, scopes_.end(), bucket_index) != scopes_.end()) {
-                    throw freefoil_exception("redeclaration of variable " + the_name);
+                    //throw freefoil_exception("redeclaration of variable " + the_name);
+                    return false;
                 }
                 scopes_.push_back(bucket_index);
+                return true;
             }
 
             value_descriptor *lookup(const string &the_name) const{

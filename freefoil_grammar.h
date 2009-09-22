@@ -116,12 +116,11 @@ namespace Freefoil {
                 var_declare_tail_ID,
                 assign_op_ID,
                 cmp_op_ID,
-                or_tail_ID,
-                and_tail_ID,
-                relation_tail_ID,
+                bool_constant_ID,
                 plus_minus_op_ID,
                 mult_divide_op_ID,
-                bool_constant_ID,
+                or_xor_op_ID,
+                unary_plus_minus_op_ID,
             };
 
             template <typename ScannerT>
@@ -190,33 +189,31 @@ namespace Freefoil {
 
                     var_declare_stmt_list = var_type >> expected_data(gen_pt_node_d[var_declare_tail] >> *(no_node_d[ch_p(',')] >> expected_data(gen_pt_node_d[var_declare_tail])) >> no_node_d[stmt_end]);
 
-                    var_declare_tail = ident >> !(assign_op >> expected_bool_expr(gen_pt_node_d[bool_expr]));
+                    var_declare_tail = ident >> !(root_node_d[assign_op] >> expected_bool_expr(gen_pt_node_d[bool_expr]));
 
                     assign_op = ch_p("=") | str_p("+=") | str_p("-=") | str_p("*=") | str_p("/=");
 
                     cmp_op = str_p("<=") | str_p(">=") | str_p("==") | str_p("!=") | ch_p(">") | ch_p("<");
 
-                    bool_expr = gen_pt_node_d[bool_term] >> or_tail;
+                    bool_expr = gen_pt_node_d[bool_term] >> *(root_node_d[or_xor_op]>> expected_bool_term(gen_pt_node_d[bool_term]));
 
-                    or_tail = *((str_p("or") | str_p("xor"))>> expected_bool_term(gen_pt_node_d[bool_term]));
-
-                    bool_term = gen_pt_node_d[bool_factor] >> and_tail;
-
-                    and_tail = *(str_p("and") >> expected_bool_factor(gen_pt_node_d[bool_factor]));
+                    bool_term = gen_pt_node_d[bool_factor] >> *(root_node_d[str_p("and")] >> expected_bool_factor(gen_pt_node_d[bool_factor]));
 
                     bool_factor = !str_p("not") >> expected_relation(gen_pt_node_d[bool_relation]);
 
-                    bool_relation = gen_pt_node_d[expr] >> relation_tail;
+                    bool_relation = gen_pt_node_d[expr] >> *(root_node_d[cmp_op] >> expected_expr(gen_pt_node_d[expr]));
 
-                    relation_tail = *(cmp_op >> expected_expr(gen_pt_node_d[expr]));
+                    expr = !unary_plus_minus_op >> gen_pt_node_d[term] >> *(root_node_d[plus_minus_op] >> expected_term(gen_pt_node_d[term]));
 
-                    expr = !plus_minus_op >> gen_pt_node_d[term] >> *(plus_minus_op >> expected_term(gen_pt_node_d[term]));
+                    unary_plus_minus_op = lexeme_d[ch_p("+") | ch_p("-")];
 
                     plus_minus_op = lexeme_d[ch_p("+") | ch_p("-")];
 
-                    term = gen_pt_node_d[factor] >> *(mult_divide_op >> expected_factor(gen_pt_node_d[factor]));
+                    term = gen_pt_node_d[factor] >> *(root_node_d[mult_divide_op] >> expected_factor(gen_pt_node_d[factor]));
 
                     mult_divide_op = lexeme_d[ch_p("*") | ch_p("/")];
+
+                    or_xor_op = str_p("or") | str_p("xor");
 
                     bool_constant = keyword_p("true") | keyword_p("false");
 
@@ -279,12 +276,11 @@ namespace Freefoil {
                 GRAMMAR_RULE(var_declare_tail_ID) var_declare_tail;
                 GRAMMAR_RULE(assign_op_ID) assign_op;
                 GRAMMAR_RULE(cmp_op_ID) cmp_op;
-                GRAMMAR_RULE(or_tail_ID) or_tail;
-                GRAMMAR_RULE(and_tail_ID) and_tail;
-                GRAMMAR_RULE(relation_tail_ID) relation_tail;
+                GRAMMAR_RULE(bool_constant_ID) bool_constant;
                 GRAMMAR_RULE(plus_minus_op_ID) plus_minus_op;
                 GRAMMAR_RULE(mult_divide_op_ID) mult_divide_op;
-                GRAMMAR_RULE(bool_constant_ID) bool_constant;
+                GRAMMAR_RULE(or_xor_op_ID) or_xor_op;
+                GRAMMAR_RULE(unary_plus_minus_op_ID) unary_plus_minus_op;
             };
         };
     }

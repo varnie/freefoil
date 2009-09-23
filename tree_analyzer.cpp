@@ -40,7 +40,7 @@ namespace Freefoil {
                      &param_descriptors_types_equal_functor);
     }
 
-    int tree_analyzer::find_assignable_function(const std::string &call_name, const std::vector<value_descriptor::E_VALUE_TYPE> &invoke_args, const function_shared_ptr_list_t &funcs) const{
+    int tree_analyzer::find_assignable_function(const std::string &call_name, const std::vector<value_descriptor::E_VALUE_TYPE> &invoke_args, const function_shared_ptr_list_t &funcs) const {
 
         const std::size_t invoke_args_count = invoke_args.size();
 
@@ -69,11 +69,11 @@ namespace Freefoil {
             good_candidates_indexes.push_back(i);
         }
 
-        if (good_candidates_indexes.size() != 1){
-        //    print_error("ambiguous function " + call_name + " call");
-        //    ++errors_count_;
+        if (good_candidates_indexes.size() != 1) {
+            //    print_error("ambiguous function " + call_name + " call");
+            //    ++errors_count_;
             return -1; //mark error
-        }else{
+        } else {
             return good_candidates_indexes.front();
         }
     }
@@ -113,19 +113,22 @@ namespace Freefoil {
             break;
         }
 
-        //now we have all user-defined function heads parsed, as well as each user-defined function must have an iterator to its body tree structure (not parsed yet)
-        //and we must have parsed "main" entry point function (with stored iterator on its body tree structure in it)
-        //check this firstly:
-        const function_shared_ptr_list_t::const_iterator invalid_function_iter
-        = std::find_if(
-              funcs_list_.begin(),
-              funcs_list_.end(),
-              boost::bind(&function_has_no_body_functor, _1));
+        //now we have all user-defined function heads parsed
 
-        if (invalid_function_iter != funcs_list_.end()) {
-            print_error("function " + (*invalid_function_iter)->get_name() + " is not implemented");
-            ++errors_count_;
-        }
+
+        function_shared_ptr_list_t::iterator iter = funcs_list_.begin();
+        do {
+            iter = std::find_if(
+                       iter,
+                       funcs_list_.end(),
+                       boost::bind(&function_has_no_body_functor, _1));
+            if (iter != funcs_list_.end()) {
+                print_error("function " + (*iter)->get_name() + " is not implemented");
+                ++errors_count_;
+
+                ++iter;
+            }
+        } while (iter != funcs_list_.end());
 
         //entry point ("main" function) must be declared
         if (std::find_if(
@@ -140,7 +143,7 @@ namespace Freefoil {
         //it is a time for parsing function's bodies and generate intermediate code
         for (function_shared_ptr_list_t::const_iterator cur_iter = funcs_list_.begin(), iter_end = funcs_list_.end(); cur_iter != iter_end; ++cur_iter) {
             curr_parsing_function_ = *cur_iter;
-            if (curr_parsing_function_->has_body()){
+            if (curr_parsing_function_->has_body()) {
                 parse_func_body(curr_parsing_function_->get_body());
                 curr_parsing_function_->print_bytecode_stream();    //
             }
@@ -725,12 +728,12 @@ namespace Freefoil {
             invoked_value_types.push_back(cur_iter->value.value().get_value_type());
         }
 
-        if (int result = find_assignable_function(func_name, invoked_value_types, funcs_list_) != -1){
+        if (int result = find_assignable_function(func_name, invoked_value_types, funcs_list_) != -1) {
             create_attributes(iter, funcs_list_[result]->get_type(), result);
-        }else{
-            if ((result = find_assignable_function(func_name, invoked_value_types, core_funcs_list_)) != -1){
+        } else {
+            if ((result = find_assignable_function(func_name, invoked_value_types, core_funcs_list_)) != -1) {
                 create_attributes(iter, core_funcs_list_[result]->get_type(), result);
-            }else{
+            } else {
                 print_error(iter, "unable to call function " + func_name);
                 ++errors_count_;
                 create_attributes(iter, value_descriptor::undefinedType);
@@ -870,10 +873,7 @@ namespace Freefoil {
     }
 
     static value_descriptor::E_VALUE_TYPE get_greater_type(value_descriptor::E_VALUE_TYPE value_type1, value_descriptor::E_VALUE_TYPE value_type2) {
-        /*
-        if (value_type1 == value_descriptor::undefinedType or value_type2 == value_descriptor::undefinedType) {
-            return value_descriptor::undefinedType;
-        }*/
+
         if (value_type1 == value_type2) {
             return value_type1;
         }
@@ -905,10 +905,7 @@ namespace Freefoil {
     }
 
     static bool is_assignable(value_descriptor::E_VALUE_TYPE left_value_type, value_descriptor::E_VALUE_TYPE right_value_type) {
-        /*
-        if (left_value_type == value_descriptor::undefinedType or right_value_type == value_descriptor::undefinedType){
-            return true;
-        }*/
+
         return get_greater_type(left_value_type, right_value_type) != value_descriptor::undefinedType;
     }
 }

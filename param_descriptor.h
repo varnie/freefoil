@@ -3,14 +3,14 @@
 
 #include "AST_defs.h"
 #include <boost/shared_ptr.hpp>
-#include <list>
+#include <vector>
 #include <string>
 
 namespace Freefoil{
 	namespace Private{
 
 		using boost::shared_ptr;
-		using std::list;
+		using std::vector;
 		using std::string;
 
 		class param_descriptor : public value_descriptor{
@@ -28,7 +28,7 @@ namespace Freefoil{
 			}
 		};
 		typedef shared_ptr<param_descriptor> param_descriptor_shared_ptr_t;
-		typedef std::list<param_descriptor_shared_ptr_t> param_descriptors_shared_ptr_list_t;
+		typedef vector<param_descriptor_shared_ptr_t> param_descriptors_shared_ptr_list_t;
 	}
 }
 

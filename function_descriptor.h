@@ -7,7 +7,6 @@
 #include "opcodes.h"
 
 #include <vector>
-#include <list>
 #include <string>
 #include <iostream>
 #include <algorithm>
@@ -17,7 +16,6 @@
 namespace Freefoil {
 	namespace Private {
 
-		using std::list;
 		using std::string;
 		using std::vector;
 		using boost::shared_ptr;
@@ -29,15 +27,8 @@ namespace Freefoil {
 		public:
             typedef vector<instruction> bytecode_stream_t;
 
-			enum E_FUNCTION_TYPE{
-				intType,
-				floatType,
-				boolType,
-				stringType,
-				voidType
-			};
 
-			function_descriptor(const string &name, const E_FUNCTION_TYPE func_type, const param_descriptors_shared_ptr_list_t &param_descriptors_list = param_descriptors_shared_ptr_list_t())
+			function_descriptor(const string &name, const value_descriptor::E_VALUE_TYPE func_type, const param_descriptors_shared_ptr_list_t &param_descriptors_list = param_descriptors_shared_ptr_list_t())
 				:name_(name), func_type_(func_type), param_descriptors_list_(param_descriptors_list), has_body_(false)
 			{
             }
@@ -45,7 +36,7 @@ namespace Freefoil {
 			const std::string &get_name() const{
 				return name_;
 			}
-			E_FUNCTION_TYPE get_type() const{
+			value_descriptor::E_VALUE_TYPE get_type() const{
 				return func_type_;
 			}
 			const param_descriptors_shared_ptr_list_t &get_param_descriptors() const{
@@ -125,7 +116,7 @@ namespace Freefoil {
 
 		private:
 			string name_;
-			E_FUNCTION_TYPE func_type_;
+			value_descriptor::E_VALUE_TYPE func_type_;
 			param_descriptors_shared_ptr_list_t param_descriptors_list_;
 			iter_t iter_body_;
 			bool has_body_;
@@ -138,7 +129,7 @@ namespace Freefoil {
 		};
 
 		typedef shared_ptr<function_descriptor> function_shared_ptr_t;
-		typedef list<function_shared_ptr_t> function_shared_ptr_list_t;
+		typedef vector<function_shared_ptr_t> function_shared_ptr_list_t;
 	}
 }
 

@@ -17,8 +17,8 @@ namespace Freefoil {
         return ast_parse<factory_t>(iter_begin, iter_end, freefoil_grammar(), space_p);
     }
 
+#if defined(BOOST_SPIRIT_DUMP_PARSETREE_AS_XML)
     void script::dump_tree(const tree_parse_info_t &info) const{
-        #if defined(BOOST_SPIRIT_DUMP_PARSETREE_AS_XML)
                 // dump parse tree as XML
                 std::map<parser_id, std::string> rule_names;
                 rule_names[freefoil_grammar::script_ID] = "script";
@@ -60,8 +60,8 @@ namespace Freefoil {
                             info.trees,
                             "",
                             rule_names);
-#endif
     }
+#endif
 
     void script::exec() {
 
@@ -71,13 +71,12 @@ namespace Freefoil {
                 break;
             }
 
+            std::cout << "parsing begin" << std::endl;
             try {
-                std::cout << "parsing begin" << std::endl;
                 tree_parse_info_t info = build_AST(iterator_t(str.begin(), str.end()), iterator_t());
-                std::cout << "parsing end" << std::endl;
-
+#if defined(BOOST_SPIRIT_DUMP_PARSETREE_AS_XML)
                 dump_tree(info);
-
+#endif
                 tree_analyzer the_tree_analyzer;
                 if (the_tree_analyzer.parse(info.trees.begin())){
                     //TODO:
@@ -116,9 +115,6 @@ namespace Freefoil {
                 case Private::open_bracket_expected_error:
                     error_msg = "open bracket expected";
                     break;
-                case Private::relation_expected_error:
-                    error_msg = "relation expected";
-                    break;
                 case Private::stmt_end_expected_error:
                     error_msg = "statement end expected";
                     break;
@@ -134,6 +130,7 @@ namespace Freefoil {
                 std::cout << "[" << iter.get_position().line << ":" << iter.get_position().column << "] ";
                 std::cout << error_msg << std::endl;
             }
+            std::cout << "parsing end" << std::endl;
         }
     }
 

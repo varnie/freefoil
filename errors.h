@@ -15,7 +15,6 @@ namespace Freefoil {
             stmt_end_expected_error,
             bool_expr_expected_error,
             bool_factor_expected_error,
-            relation_expected_error,
             expr_expected_error,
             term_expected_error,
             factor_expected_error,

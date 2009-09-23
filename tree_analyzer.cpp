@@ -9,6 +9,7 @@
 #include <algorithm>
 
 #include <boost/bind.hpp>
+#include <boost/bind/apply.hpp>
 #include <boost/lexical_cast.hpp>
 
 namespace Freefoil {
@@ -37,6 +38,44 @@ namespace Freefoil {
                      func->get_param_descriptors().begin(), func->get_param_descriptors().end(),
                      the_func->get_param_descriptors().begin(),
                      &param_descriptors_types_equal_functor);
+    }
+
+    int tree_analyzer::find_assignable_function(const std::string &call_name, const std::vector<value_descriptor::E_VALUE_TYPE> &invoke_args, const function_shared_ptr_list_t &funcs) const{
+
+        const std::size_t invoke_args_count = invoke_args.size();
+
+        function_shared_ptr_list_t candidates_funcs;
+        std::remove_copy_if(funcs.begin(),
+                            funcs.end(),
+                            std::back_inserter(candidates_funcs),
+                            boost::bind(&function_descriptor::get_name, _1) != call_name or
+                            boost::bind(&function_descriptor::get_param_descriptors_count, _1) != invoke_args_count
+                           );
+
+        std::vector<std::size_t> good_candidates_indexes;
+
+        for (std::size_t i = 0, count = candidates_funcs.size(); i < count; ++i) {
+
+            const function_shared_ptr_t tested_func = candidates_funcs[i];
+
+            assert(invoke_args_count == tested_func->get_param_descriptors_count());
+            const param_descriptors_shared_ptr_list_t params_list = tested_func->get_param_descriptors();
+            for (std::size_t j = 0; j < invoke_args_count; ++j) {
+                if (!is_assignable(params_list[j]->get_value_type(), invoke_args[j])) {
+                    continue;
+                }
+            }
+
+            good_candidates_indexes.push_back(i);
+        }
+
+        if (good_candidates_indexes.size() != 1){
+        //    print_error("ambiguous function " + call_name + " call");
+        //    ++errors_count_;
+            return -1; //mark error
+        }else{
+            return good_candidates_indexes.front();
+        }
     }
 
     bool function_has_no_body_functor(const function_shared_ptr_t &the_func) {
@@ -101,8 +140,10 @@ namespace Freefoil {
         //it is a time for parsing function's bodies and generate intermediate code
         for (function_shared_ptr_list_t::const_iterator cur_iter = funcs_list_.begin(), iter_end = funcs_list_.end(); cur_iter != iter_end; ++cur_iter) {
             curr_parsing_function_ = *cur_iter;
-            parse_func_body(curr_parsing_function_->get_body());
-            curr_parsing_function_->print_bytecode_stream();    //
+            if (curr_parsing_function_->has_body()){
+                parse_func_body(curr_parsing_function_->get_body());
+                curr_parsing_function_->print_bytecode_stream();    //
+            }
         }
 
         std::cout << "errors: " << errors_count_ << std::endl;
@@ -116,7 +157,7 @@ namespace Freefoil {
         //TODO: populate core_funcs_list_ with core functions
         param_descriptors_shared_ptr_list_t param_descriptors;
         param_descriptors.push_back(param_descriptor_shared_ptr_t(new param_descriptor(value_descriptor::intType, false, "i")));
-        core_funcs_list_.push_back(function_shared_ptr_t (new function_descriptor("foo", function_descriptor::voidType, param_descriptors)));
+        core_funcs_list_.push_back(function_shared_ptr_t (new function_descriptor("foo", value_descriptor::voidType, param_descriptors)));
     }
 
     tree_analyzer::tree_analyzer() :errors_count_(0), symbols_handler_(NULL), curr_parsing_function_(), stack_offset_(0) {
@@ -254,21 +295,21 @@ namespace Freefoil {
         assert(iter->children.size() == 3);
         assert((iter->children.begin())->value.id() == freefoil_grammar::func_type_ID);
 
-        function_descriptor::E_FUNCTION_TYPE func_type;
+        value_descriptor::E_VALUE_TYPE func_type;
 
         const std::string func_type_as_str(parse_str(iter->children.begin()));
         //TODO: add other function types checking
         if (func_type_as_str == "void") {
-            func_type = function_descriptor::voidType;
+            func_type = value_descriptor::voidType;
         } else if (func_type_as_str == "string") {
-            func_type = function_descriptor::stringType;
+            func_type = value_descriptor::stringType;
         } else if (func_type_as_str == "int") {
-            func_type = function_descriptor::intType;
+            func_type = value_descriptor::intType;
         } else if (func_type_as_str == "float") {
-            func_type = function_descriptor::floatType;
+            func_type = value_descriptor::floatType;
         } else {
             assert(func_type_as_str == "bool");
-            func_type = function_descriptor::boolType;
+            func_type = value_descriptor::boolType;
         }
 
         const function_shared_ptr_t parsed_func = function_shared_ptr_t(new function_descriptor(parse_str(iter->children.begin()+1), func_type, parse_func_param_descriptors_list(iter->children.begin()+2)));
@@ -310,7 +351,7 @@ namespace Freefoil {
                 assert(cur_iter->children.begin()->children.begin()->value.id() == freefoil_grammar::ident_ID);
                 const std::string var_name(parse_str(cur_iter->children.begin()->children.begin()));
 
-                if (!symbols_handler_->insert(var_name, value_descriptor(var_type, stack_offset_))){
+                if (!symbols_handler_->insert(var_name, value_descriptor(var_type, stack_offset_))) {
                     print_error(cur_iter->children.begin()->children.begin(), "redeclaration of variable " + var_name);
                     ++errors_count_;
                 }
@@ -320,13 +361,13 @@ namespace Freefoil {
                     //it is an assign expr
                     parse_bool_expr(cur_iter->children.begin()->children.begin() + 1);
                     value_descriptor::E_VALUE_TYPE expr_val_type = (cur_iter->children.begin()->children.begin() + 1)->value.value().get_value_type();
-                    if (is_assignable(var_type, expr_val_type)){
-                        if (var_type != expr_val_type){
+                    if (is_assignable(var_type, expr_val_type)) {
+                        if (var_type != expr_val_type) {
                             //make implicit cast explicit
                             create_cast(cur_iter->children.begin()->children.begin() + 1, var_type);
                         }
                         create_attributes(cur_iter->children.begin(), var_type);
-                    }else{
+                    } else {
                         print_error(cur_iter->children.begin(), "cannot assign " + type_to_string(expr_val_type) + " to " + type_to_string(var_type));
                         ++errors_count_;
                     }
@@ -379,7 +420,7 @@ namespace Freefoil {
             assert((iter->children.begin() + 1)->value.id() == freefoil_grammar::bool_term_ID);
 
             iter_t left_iter = iter->children.begin();
-            iter_t right_iter = iter->children.begin() + 1;
+            iter_t right_iter = left_iter + 1;
 
             parse_bool_term(left_iter);
             parse_bool_term(right_iter);
@@ -387,11 +428,11 @@ namespace Freefoil {
             value_descriptor::E_VALUE_TYPE left_value_type = left_iter->value.value().get_value_type();
             value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
 
-            if (left_value_type != value_descriptor::boolType or right_value_type != value_descriptor::boolType){
+            if (left_value_type != value_descriptor::boolType or right_value_type != value_descriptor::boolType) {
                 print_error(iter, "bool types expected for \"" + parse_str(iter) + "\" operator");
                 ++errors_count_;
                 create_attributes(iter, value_descriptor::undefinedType);
-            }else{
+            } else {
                 create_attributes(iter, value_descriptor::boolType);
             }
         }
@@ -409,7 +450,7 @@ namespace Freefoil {
             assert((iter->children.begin() + 1)->value.id() == freefoil_grammar::bool_factor_ID);
 
             iter_t left_iter = iter->children.begin();
-            iter_t right_iter = iter->children.begin() + 1;
+            iter_t right_iter = left_iter + 1;
 
             parse_bool_factor(left_iter);
             parse_bool_factor(right_iter);
@@ -417,11 +458,11 @@ namespace Freefoil {
             value_descriptor::E_VALUE_TYPE left_value_type = left_iter->value.value().get_value_type();
             value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
 
-            if (left_value_type != value_descriptor::boolType or right_value_type != value_descriptor::boolType){
+            if (left_value_type != value_descriptor::boolType or right_value_type != value_descriptor::boolType) {
                 print_error(iter, "bool types expected for \"and\" operator");
                 ++errors_count_;
                 create_attributes(iter, value_descriptor::undefinedType);
-            }else{
+            } else {
                 create_attributes(iter, value_descriptor::boolType);
             }
         }
@@ -439,7 +480,7 @@ namespace Freefoil {
             assert((iter->children.begin() + 1)->value.id() == freefoil_grammar::term_ID);
 
             iter_t left_iter = iter->children.begin();
-            iter_t right_iter = iter->children.begin() + 1;
+            iter_t right_iter = left_iter + 1;
 
             parse_term(left_iter);
             parse_term(right_iter);
@@ -448,23 +489,23 @@ namespace Freefoil {
             value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
 
             create_attributes(iter, get_greatest_common_type(left_value_type,
-                                                             right_value_type));
+                              right_value_type));
 
             value_descriptor::E_VALUE_TYPE iter_value_type = iter->value.value().get_value_type();
 
-            if (iter_value_type == value_descriptor::undefinedType){
-                if (parse_str(iter) == "+"){
+            if (iter_value_type == value_descriptor::undefinedType) {
+                if (parse_str(iter) == "+") {
                     print_error(iter, "cannot add expressions of types " + type_to_string(left_value_type) + " and " + type_to_string(right_value_type));
-                }else{
+                } else {
                     assert(parse_str(iter) == "-");
                     print_error(iter, "cannot subtract expressions of types " + type_to_string(left_value_type) + " and " + type_to_string(right_value_type));
                 }
                 ++errors_count_;
-            }else{
-                if (iter_value_type != left_value_type){
+            } else {
+                if (iter_value_type != left_value_type) {
                     create_cast(left_iter, iter_value_type);
                 }
-                if (iter_value_type != right_value_type){
+                if (iter_value_type != right_value_type) {
                     create_cast(right_iter, iter_value_type);
                 }
             }
@@ -483,7 +524,7 @@ namespace Freefoil {
             assert((iter->children.begin() + 1)->value.id() == freefoil_grammar::factor_ID);
 
             iter_t left_iter = iter->children.begin();
-            iter_t right_iter = iter->children.begin() + 1;
+            iter_t right_iter = left_iter + 1;
 
             parse_factor(left_iter);
             parse_factor(right_iter);
@@ -492,23 +533,23 @@ namespace Freefoil {
             value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
 
             create_attributes(iter, get_greatest_common_type(left_value_type,
-                                                             right_value_type));
+                              right_value_type));
 
             value_descriptor::E_VALUE_TYPE iter_value_type = iter->value.value().get_value_type();
 
-            if (iter_value_type == value_descriptor::undefinedType){
-                if (parse_str(iter) == "*"){
+            if (iter_value_type == value_descriptor::undefinedType) {
+                if (parse_str(iter) == "*") {
                     print_error(iter, "cannot multiplicate expressions of types " + type_to_string(left_value_type) + " and " + type_to_string(right_value_type));
-                }else{
+                } else {
                     assert(parse_str(iter) == "/");
                     print_error(iter, "cannot divide expressions of types " + type_to_string(left_value_type) + " and " + type_to_string(right_value_type));
                 }
                 ++errors_count_;
-            }else{
-                if (iter_value_type != left_value_type){
+            } else {
+                if (iter_value_type != left_value_type) {
                     create_cast(left_iter, iter_value_type);
                 }
-                if (iter_value_type != right_value_type){
+                if (iter_value_type != right_value_type) {
                     create_cast(right_iter, iter_value_type);
                 }
             }
@@ -528,7 +569,7 @@ namespace Freefoil {
             assert((iter->children.begin() + 1)->value.id() == freefoil_grammar::expr_ID);
 
             iter_t left_iter = iter->children.begin();
-            iter_t right_iter = iter->children.begin() + 1;
+            iter_t right_iter = left_iter + 1;
 
             parse_expr(left_iter);
             parse_expr(right_iter);
@@ -537,18 +578,18 @@ namespace Freefoil {
             value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
 
             create_attributes(iter, get_greatest_common_type(left_value_type,
-                                                             right_value_type));
+                              right_value_type));
 
             value_descriptor::E_VALUE_TYPE iter_value_type = iter->value.value().get_value_type();
 
-            if (iter_value_type == value_descriptor::undefinedType){
+            if (iter_value_type == value_descriptor::undefinedType) {
                 print_error(iter, "cannot compare expressions of types " + type_to_string(left_value_type) + " and " + type_to_string(right_value_type));
                 ++errors_count_;
-            }else{
-                if (iter_value_type != left_value_type){
+            } else {
+                if (iter_value_type != left_value_type) {
                     create_cast(left_iter, iter_value_type);
                 }
-                if (iter_value_type != right_value_type){
+                if (iter_value_type != right_value_type) {
                     create_cast(right_iter, iter_value_type);
                 }
                 create_attributes(iter, value_descriptor::boolType);
@@ -620,7 +661,7 @@ namespace Freefoil {
         const string name(parse_str(iter));
         int stack_offset;
         value_descriptor::E_VALUE_TYPE value_type = value_descriptor::undefinedType;
-        value_descriptor *the_value_descriptor = symbols_handler_->lookup(name);
+        const value_descriptor *the_value_descriptor = symbols_handler_->lookup(name);
         if (the_value_descriptor != NULL) {
             value_type = the_value_descriptor->get_value_type();
             stack_offset = the_value_descriptor->get_stack_offset();
@@ -670,16 +711,31 @@ namespace Freefoil {
         create_attributes(iter, iter->children.begin()->value.value().get_value_type());
     }
 
-//TODO:
     void tree_analyzer::parse_func_call(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::func_call_ID);
 
         const std::string func_name(parse_str(iter->children.begin()));
-        for (iter_t cur_iter = (iter->children.begin() + 2)->children.begin(), iter_end = (iter->children.begin() + 2)->children.end(); cur_iter != iter_end; ++cur_iter) {
-            //TODO:
+        assert((iter->children.begin() + 1)->value.id() == freefoil_grammar::invoke_args_list_ID);
+        std::vector<value_descriptor::E_VALUE_TYPE> invoked_value_types;
+        for (iter_t cur_iter = (iter->children.begin() + 1)->children.begin(), iter_end = (iter->children.begin() + 1)->children.end(); cur_iter != iter_end; ++cur_iter) {
+
+            assert(cur_iter->value.id() == freefoil_grammar::bool_expr_ID);
+            parse_bool_expr(cur_iter);
+            invoked_value_types.push_back(cur_iter->value.value().get_value_type());
         }
-        //TODO:
+
+        if (int result = find_assignable_function(func_name, invoked_value_types, funcs_list_) != -1){
+            create_attributes(iter, funcs_list_[result]->get_type(), result);
+        }else{
+            if ((result = find_assignable_function(func_name, invoked_value_types, core_funcs_list_)) != -1){
+                create_attributes(iter, core_funcs_list_[result]->get_type(), result);
+            }else{
+                print_error(iter, "unable to call function " + func_name);
+                ++errors_count_;
+                create_attributes(iter, value_descriptor::undefinedType);
+            }
+        }
     }
 
     void tree_analyzer::parse_bool_constant(const iter_t &iter) {
@@ -713,7 +769,7 @@ namespace Freefoil {
         parse_bool_relation(negate ? iter->children.begin() + 1 : iter->children.begin());
         if (negate) {
             create_attributes(iter, (iter->children.begin() + 1)->value.value().get_value_type());
-            if ((iter->children.begin() + 1)->value.value().get_value_type() != value_descriptor::boolType){
+            if ((iter->children.begin() + 1)->value.value().get_value_type() != value_descriptor::boolType) {
                 print_error(iter, "cannot perform \"not\" operator for not bool type " + type_to_string((iter->children.begin() + 1)->value.value().get_value_type()));
                 ++errors_count_;
             }
@@ -789,7 +845,7 @@ namespace Freefoil {
         std::cout << msg << std::endl;
     }
 
-    void tree_analyzer::create_cast(const iter_t &iter, const value_descriptor::E_VALUE_TYPE cast_type){
+    void tree_analyzer::create_cast(const iter_t &iter, const value_descriptor::E_VALUE_TYPE cast_type) {
         node_attributes tmp(iter->value.value());
         tmp.set_cast(cast_type);
         iter->value.value(tmp);
@@ -828,7 +884,7 @@ namespace Freefoil {
         if (value_type1 == value_descriptor::intType and value_type2 == value_descriptor::floatType) {
             return value_descriptor::floatType;
         }
-        if (value_type1 == value_descriptor::intType and value_type2 == value_descriptor::boolType){
+        if (value_type1 == value_descriptor::intType and value_type2 == value_descriptor::boolType) {
             return value_descriptor::intType;
         }
 
@@ -839,16 +895,16 @@ namespace Freefoil {
 
         value_descriptor::E_VALUE_TYPE result_type;
 
-        if ((result_type = get_greater_type(value_type1, value_type2)) != value_descriptor::undefinedType){
+        if ((result_type = get_greater_type(value_type1, value_type2)) != value_descriptor::undefinedType) {
             return result_type;
         }
-        if ((result_type = get_greater_type(value_type2, value_type1)) != value_descriptor::undefinedType){
+        if ((result_type = get_greater_type(value_type2, value_type1)) != value_descriptor::undefinedType) {
             return result_type;
         }
         return value_descriptor::undefinedType;
     }
 
-    static bool is_assignable(value_descriptor::E_VALUE_TYPE left_value_type, value_descriptor::E_VALUE_TYPE right_value_type){
+    static bool is_assignable(value_descriptor::E_VALUE_TYPE left_value_type, value_descriptor::E_VALUE_TYPE right_value_type) {
         /*
         if (left_value_type == value_descriptor::undefinedType or right_value_type == value_descriptor::undefinedType){
             return true;

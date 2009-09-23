@@ -10,7 +10,9 @@ namespace Freefoil {
     using Private::tree_parse_info_t;
 
     class script {
+#if defined(BOOST_SPIRIT_DUMP_PARSETREE_AS_XML)
         void dump_tree(const tree_parse_info_t &info) const;
+#endif
     public:
         script();
         void exec();

@@ -139,7 +139,6 @@ namespace Freefoil {
                     assertion_t expected_stmt_end(Private::stmt_end_expected_error);
                     assertion_t expected_bool_expr(Private::bool_expr_expected_error);
                     assertion_t expected_bool_factor(Private::bool_factor_expected_error);
-                    assertion_t expected_relation(Private::relation_expected_error);
                     assertion_t expected_expr(Private::expr_expected_error);
                     assertion_t expected_term(Private::term_expected_error);
                     assertion_t expected_factor(Private::factor_expected_error);
@@ -173,7 +172,7 @@ namespace Freefoil {
 
                     func_call = ident >> gen_pt_node_d[invoke_args_list];
 
-                    invoke_args_list = no_node_d[ch_p('(')]
+                    invoke_args_list = expected_open_bracket(no_node_d[ch_p('(')])
                                  >> !(gen_pt_node_d[bool_expr] >> *(no_node_d[ch_p(',')] >> expected_data(gen_pt_node_d[bool_expr])))
                                  >> expected_closed_bracket(no_node_d[ch_p(')')]);
 
@@ -199,7 +198,7 @@ namespace Freefoil {
 
                     bool_term = gen_pt_node_d[bool_factor] >> *(root_node_d[str_p("and")] >> expected_bool_factor(gen_pt_node_d[bool_factor]));
 
-                    bool_factor = !str_p("not") >> expected_relation(gen_pt_node_d[bool_relation]);
+                    bool_factor = !str_p("not") >> gen_pt_node_d[bool_relation];
 
                     bool_relation = gen_pt_node_d[expr] >> *(root_node_d[cmp_op] >> expected_expr(gen_pt_node_d[expr]));
 

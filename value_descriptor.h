@@ -14,6 +14,7 @@ namespace Freefoil {
                 floatType,
                 boolType,
                 stringType,
+                voidType,
             };
         private:
             E_VALUE_TYPE value_type_;

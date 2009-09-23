@@ -25,8 +25,6 @@ namespace Freefoil {
             typedef vector<float> float_table_t;
             typedef vector<string> string_table_t;
 		public:
-            typedef vector<instruction> bytecode_stream_t;
-
 
 			function_descriptor(const string &name, const value_descriptor::E_VALUE_TYPE func_type, const param_descriptors_shared_ptr_list_t &param_descriptors_list = param_descriptors_shared_ptr_list_t())
 				:name_(name), func_type_(func_type), param_descriptors_list_(param_descriptors_list), has_body_(false)
@@ -54,10 +52,6 @@ namespace Freefoil {
 
 			iter_t get_body() const{
 			    return iter_body_;
-			}
-
-			void add_instruction(const instruction &instr){
-			    bytecode_stream_.push_back(instr);
 			}
 
 			std::size_t get_param_descriptors_count() const{
@@ -106,14 +100,6 @@ namespace Freefoil {
                     return std::distance(int_table_.begin(), std::find(int_table_.begin(), int_table_.end(), i));
 			}
 
-			void print_bytecode_stream() const{
-                    std::cout << "bytecode: ";
-                    for (bytecode_stream_t::const_iterator cur_iter = bytecode_stream_.begin(), iter_end = bytecode_stream_.end(); cur_iter != iter_end; ++cur_iter){
-                        std::cout << *cur_iter;
-                    }
-                    std::cout << std::endl;
-			}
-
 		private:
 			string name_;
 			value_descriptor::E_VALUE_TYPE func_type_;
@@ -124,8 +110,6 @@ namespace Freefoil {
 			int_table_t int_table_;
 			float_table_t float_table_;
 			string_table_t string_table_;
-
-            bytecode_stream_t bytecode_stream_;
 		};
 
 		typedef shared_ptr<function_descriptor> function_shared_ptr_t;

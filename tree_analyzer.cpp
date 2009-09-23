@@ -113,41 +113,42 @@ namespace Freefoil {
             break;
         }
 
+        //now we have all function declarations valid
+        //some of them might contain no iterators to impl (due to errors of having only func decl in the program source)
+        //it is a time for parsing valid function's impls
+        for (function_shared_ptr_list_t::const_iterator cur_iter = funcs_list_.begin(), iter_end = funcs_list_.end(); cur_iter != iter_end; ++cur_iter) {
+            curr_parsing_function_ = *cur_iter;
+            if (curr_parsing_function_->has_body()) { //need
+                parse_func_body(curr_parsing_function_->get_body());
+            }
+        }
+
         //now we have all user-defined function heads parsed
-
-
         function_shared_ptr_list_t::iterator iter = funcs_list_.begin();
+        function_shared_ptr_list_t::iterator iter_end = funcs_list_.end();
         do {
             iter = std::find_if(
                        iter,
-                       funcs_list_.end(),
+                       iter_end,
                        boost::bind(&function_has_no_body_functor, _1));
-            if (iter != funcs_list_.end()) {
-                print_error("function " + (*iter)->get_name() + " is not implemented");
+            if (iter != iter_end) {
+                print_error("function " + (*(*iter)).get_name() + " is not implemented");
                 ++errors_count_;
 
                 ++iter;
             }
-        } while (iter != funcs_list_.end());
+        } while (iter != iter_end);
 
         //entry point ("main" function) must be declared
         if (std::find_if(
                     funcs_list_.begin(),
-                    funcs_list_.end(),
-                    boost::bind(&entry_point_functor, _1)) == funcs_list_.end()) {
+                    iter_end,
+                    boost::bind(&entry_point_functor, _1)) == iter_end) {
             print_error("entry point not declared");
             ++errors_count_;
         }
 
-        //now we have all function declarations valid and we are sure we have "main" entry point function
-        //it is a time for parsing function's bodies and generate intermediate code
-        for (function_shared_ptr_list_t::const_iterator cur_iter = funcs_list_.begin(), iter_end = funcs_list_.end(); cur_iter != iter_end; ++cur_iter) {
-            curr_parsing_function_ = *cur_iter;
-            if (curr_parsing_function_->has_body()) {
-                parse_func_body(curr_parsing_function_->get_body());
-                curr_parsing_function_->print_bytecode_stream();    //
-            }
-        }
+        //TODO: add check that each func impl has "return stmt" in all "key points"
 
         std::cout << "errors: " << errors_count_ << std::endl;
         std::cout << "analyze end" << std::endl;

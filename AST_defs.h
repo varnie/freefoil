@@ -15,8 +15,7 @@ namespace Freefoil {
             int index_;
             value_descriptor::E_VALUE_TYPE cast_type_;
         public:
-            node_attributes():value_type_(value_descriptor::undefinedType), index_(-1), cast_type_(value_descriptor::undefinedType)
-            {}
+            node_attributes():value_type_(value_descriptor::undefinedType), index_(-1), cast_type_(value_descriptor::undefinedType) {}
 
             void set_value_type(const value_descriptor::E_VALUE_TYPE value_type) {
                 value_type_ = value_type;
@@ -30,8 +29,11 @@ namespace Freefoil {
             int get_index() const {
                 return index_;
             }
-            void set_cast(const value_descriptor::E_VALUE_TYPE cast_type){
+            void set_cast(const value_descriptor::E_VALUE_TYPE cast_type) {
                 cast_type_ = cast_type;
+            }
+            value_descriptor::E_VALUE_TYPE get_cast() const {
+                return cast_type_;
             }
         };
 
@@ -49,6 +51,10 @@ namespace Freefoil {
         typedef tree_match_t::tree_iterator iter_t;
         typedef tree_match_t::node_t node_t;
         typedef tree_parse_info<iterator_t,factory_t> tree_parse_info_t;
+
+        inline std::string parse_str(const iter_t &iter) {
+            return std::string(iter->value.begin(), iter->value.end());
+        }
     }
 }
 

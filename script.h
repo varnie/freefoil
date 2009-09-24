@@ -13,6 +13,7 @@ namespace Freefoil {
 #if defined(BOOST_SPIRIT_DUMP_PARSETREE_AS_XML)
         void dump_tree(const tree_parse_info_t &info) const;
 #endif
+        bool parse(const std::string &program_source, tree_parse_info_t &result_info);
     public:
         script();
         void exec();

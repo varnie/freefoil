@@ -2,14 +2,12 @@
 #include "freefoil_grammar.h"
 #include "AST_defs.h"
 #include "exceptions.h"
-#include "opcodes.h"
 
 #include <iostream>
 #include <list>
 #include <algorithm>
 
 #include <boost/bind.hpp>
-#include <boost/bind/apply.hpp>
 #include <boost/lexical_cast.hpp>
 
 namespace Freefoil {
@@ -19,8 +17,6 @@ namespace Freefoil {
     static value_descriptor::E_VALUE_TYPE get_greater_type(value_descriptor::E_VALUE_TYPE value_type1, value_descriptor::E_VALUE_TYPE value_type2);
     static value_descriptor::E_VALUE_TYPE get_greatest_common_type(value_descriptor::E_VALUE_TYPE value_type1, value_descriptor::E_VALUE_TYPE value_type2);
     static bool is_assignable(value_descriptor::E_VALUE_TYPE left_value_type, value_descriptor::E_VALUE_TYPE right_value_type);
-
-    static std::string parse_str(const iter_t &iter);
 
     bool param_descriptors_types_equal_functor(const param_descriptor_shared_ptr_t &param_descriptor, const param_descriptor_shared_ptr_t &the_param_descriptor) {
         return 	param_descriptor->get_value_type() == the_param_descriptor->get_value_type();
@@ -149,6 +145,7 @@ namespace Freefoil {
         }
 
         //TODO: add check that each func impl has "return stmt" in all "key points"
+        //and other checks
 
         std::cout << "errors: " << errors_count_ << std::endl;
         std::cout << "analyze end" << std::endl;
@@ -169,6 +166,8 @@ namespace Freefoil {
     }
 
     void tree_analyzer::parse_script(const iter_t &iter) {
+
+        assert(iter->value.id() == freefoil_grammar::script_ID);
 
         for (iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter) {
             if (cur_iter->value.id() == freefoil_grammar::func_decl_ID) {
@@ -360,6 +359,7 @@ namespace Freefoil {
                     ++errors_count_;
                 }
                 create_attributes(cur_iter->children.begin()->children.begin(), var_type);
+                create_attributes(cur_iter->children.begin()->children.begin(), var_type, stack_offset_);
 
                 if (cur_iter->children.begin()->children.begin() + 1 != cur_iter->children.begin()->children.end()) {
                     //it is an assign expr
@@ -827,12 +827,12 @@ namespace Freefoil {
 
     void tree_analyzer::parse_func_body(const iter_t &iter) {
 
+        assert(iter->value.id() == freefoil_grammar::func_body_ID);
         stack_offset_ = curr_parsing_function_->get_param_descriptors_count();
 
         symbols_handler_.reset(new symbols_handler);
         symbols_handler_->scope_begin();
 
-        assert(iter->value.id() == freefoil_grammar::func_body_ID);
         for (iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter) {
             parse_stmt(cur_iter);
         }
@@ -869,10 +869,6 @@ namespace Freefoil {
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-    static std::string parse_str(const iter_t &iter) {
-        return std::string(iter->value.begin(), iter->value.end());
-    }
-
     static value_descriptor::E_VALUE_TYPE get_greater_type(value_descriptor::E_VALUE_TYPE value_type1, value_descriptor::E_VALUE_TYPE value_type2) {
 
         if (value_type1 == value_type2) {
@@ -886,6 +882,9 @@ namespace Freefoil {
             return value_descriptor::floatType;
         }
         if (value_type1 == value_descriptor::intType and value_type2 == value_descriptor::boolType) {
+            return value_descriptor::intType;
+        }
+        if (value_type1 == value_descriptor::floatType and value_type2 == value_descriptor::boolType) {
             return value_descriptor::intType;
         }
 

@@ -7,33 +7,44 @@ namespace Freefoil {
     namespace Private {
 
         enum OPCODE_KIND {
-            GET_INT_CONST,
-            GET_INDEX_OF_CONST,
-            GET_FLOAT_CONST,
-            GET_STRING_CONST,
-            PUSH_FLOAT_CONST,
-            PUSH_STR_CONST,
-            PUSH_TRUE,
-            PUSH_FALSE,
-            STORE_VAR,
-            GET_VAR_INDEX,
-            LOAD_VAR,
-            OR_OP,
-            XOR_OP,
-            AND_OP,
-            NOT_OP,
-            NEGATE_OP, //-
-            PLUS_OP,
-            MINUS_OP,
-            MULT_OP,
-            DIVIDE_OP,
-            EQUAL_OP,
-            NOT_EQUAL_OP,
-            LESS_OP,
-            GREATER_OP,
-            LESS_OR_EQUAL_OP,
-            GREATER_OR_EQUAL_OP,
-            CAST_INT_TO_STRING,
+            OPCODE_ipush = 0x0,
+            OPCODE_fpush = 0x1,
+            OPCODE_spush = 0x2, //push string to the top of stack
+
+            OPCODE_istore = 0x3, //pop the int value from the top of stack and store to the variable
+            OPCODE_fstore = 0x4,
+            OPCODE_sstore = 0x5,
+
+            OPCODE_iadd = 0x6,
+            OPCODE_fadd = 0x7,
+            OPCODE_sadd = 0x8, //str + str
+
+            OPCODE_negate = 0x9, //-
+
+            OPCODE_isub = 0xa,
+            OPCODE_fsub = 0xb,
+
+            OPCODE_imul = 0xc,
+            OPCODE_fmul = 0xd,
+
+            OPCODE_idiv = 0xe,
+            OPCODE_fdiv = 0xf,
+
+            OPCODE_or = 0x10,
+            OPCODE_xor = 0x11,
+            OPCODE_and = 0x12,
+            OPCODE_not = 0x13,
+
+            OPCODE_eq = 0x14,
+            OPCODE_neq = 0x15,
+            OPCODE_leq = 0x16,//<=
+            OPCODE_geq = 0x17, //>=
+            OPCODE_greater = 0x18,
+            OPCODE_less = 0x19,
+
+            OPCODE_call = 0x1a,
+
+
             //TODO: add other opcodes
         };
 
@@ -56,15 +67,7 @@ namespace Freefoil {
 
         inline std::ostream& operator<< ( std::ostream& theStream, const instruction & the_instruction){
 
-            if (the_instruction.op_ == GET_VAR_INDEX){
-                theStream << "offset ";
-                theStream << the_instruction.i_ << " ";
-            }else if (the_instruction.op_ == GET_INDEX_OF_CONST){
-                theStream << "index of const ";
-                theStream << the_instruction.i_ << " ";
-            } else{
-                theStream << the_instruction.op_ << " ";
-            }
+            //TODO
 
             return theStream;
         }

@@ -522,16 +522,16 @@ namespace Freefoil {
     }
 
     void codegen::code_emit(OPCODE_KIND opcode) {
-        //TODO:
+
         funcs_bytecodes_[funcs_count_].push_back(opcode);
         std::cout << opcode << " ";
     }
 
     void codegen::code_emit(OPCODE_KIND opcode, std::size_t index) {
-        //TODO
+
         code_emit(opcode);
         funcs_bytecodes_[funcs_count_].push_back(index);
-        std::cout << index << " ";
+        std::cout << "(" << index << ") ";
     }
 
     void codegen::code_emit_cast(value_descriptor::E_VALUE_TYPE src_type, value_descriptor::E_VALUE_TYPE cast_type) {
@@ -543,7 +543,7 @@ namespace Freefoil {
 
         } else if (cast_type == value_descriptor::floatType) {
         } else {
-            assert(cast_type == value_descriptor::stringType);
+            assert(cast_type == value_descriptor::intType);
         }
     }
 

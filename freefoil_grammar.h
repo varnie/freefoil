@@ -216,11 +216,12 @@ namespace Freefoil {
 
                     bool_constant = keyword_p("true") | keyword_p("false");
 
-                    factor = func_call
-                             | ident
+                    factor =
+                               ident
+                             | func_call
                              | number
                              | quoted_string
-                             | no_node_d[ch_p('(')] >> bool_expr >> expected_closed_bracket(no_node_d[ch_p(')')])
+                             | no_node_d[ch_p('(')] >> gen_pt_node_d[bool_expr] >> expected_closed_bracket(no_node_d[ch_p(')')])
                              | bool_constant
                     ;
 

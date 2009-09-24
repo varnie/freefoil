@@ -365,6 +365,7 @@ namespace Freefoil {
                     //it is an assign expr
                     parse_bool_expr(cur_iter->children.begin()->children.begin() + 1);
                     value_descriptor::E_VALUE_TYPE expr_val_type = (cur_iter->children.begin()->children.begin() + 1)->value.value().get_value_type();
+
                     if (is_assignable(var_type, expr_val_type)) {
                         if (var_type != expr_val_type) {
                             //make implicit cast explicit
@@ -710,6 +711,9 @@ namespace Freefoil {
             break;
         case freefoil_grammar::bool_expr_ID:
             parse_bool_expr(iter->children.begin());
+            break;
+        default:
+            break;
         }
 
         create_attributes(iter, iter->children.begin()->value.value().get_value_type());
@@ -792,9 +796,7 @@ namespace Freefoil {
             create_attributes(iter, iter->children.begin()->value.value().get_value_type());
         } else {
             assert(id == freefoil_grammar::cmp_op_ID);
-
             parse_cmp_op(iter->children.begin());
-
             create_attributes(iter, iter->children.begin()->value.value().get_value_type());
         }
     }

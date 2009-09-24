@@ -39,6 +39,8 @@ namespace Freefoil {
                 return "float_type";
             }else if (value_type == value_descriptor::boolType){
                 return "bool_type";
+            }else if (value_type == value_descriptor::voidType){
+                return "void_type";
             }else{
                 assert(value_type == value_descriptor::stringType);
                 return "string_type";

@@ -44,33 +44,13 @@ namespace Freefoil {
 
             OPCODE_call = 0x1a,
 
+            OPCODE_b2str,
+            OPCODE_b2f,
+            OPCODE_f2i,
+            OPCODE_i2str,
 
             //TODO: add other opcodes
         };
-
-        struct instruction {
-            friend std::ostream& operator<< ( std::ostream& theStream, instruction& the_instruction);
-
-            OPCODE_KIND op_;
-            union {
-                float f_;
-                int i_;
-                char *pChar_;
-                void *pObj_;
-            };
-            explicit instruction(OPCODE_KIND op):op_(op) {}
-            explicit instruction(OPCODE_KIND op, float f):op_(op), f_(f) {}
-            explicit instruction(OPCODE_KIND op, int i):op_(op), i_(i) {}
-            explicit instruction(OPCODE_KIND op, char *pChar):op_(op), pChar_(pChar) {}
-            explicit instruction(int offset):i_(offset) {}
-        };
-
-        inline std::ostream& operator<< ( std::ostream& theStream, const instruction & the_instruction){
-
-            //TODO
-
-            return theStream;
-        }
     }
 }
 

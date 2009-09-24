@@ -27,15 +27,17 @@ namespace Freefoil {
     }
 
     bool function_heads_equal_functor(const function_shared_ptr_t &func, const function_shared_ptr_t &the_func) {
-        return 		func->get_type() == the_func->get_type()
-                 &&  func->get_name() == the_func->get_name()
+        return
+                     func->get_name() == the_func->get_name()
                  &&  func->get_param_descriptors().size() == the_func->get_param_descriptors().size()
                  &&  std::equal(
-                     func->get_param_descriptors().begin(), func->get_param_descriptors().end(),
-                     the_func->get_param_descriptors().begin(),
-                     &param_descriptors_types_equal_functor);
+                         func->get_param_descriptors().begin(), func->get_param_descriptors().end(),
+                         the_func->get_param_descriptors().begin(),
+                         &param_descriptors_types_equal_functor
+                     );
     }
 
+    //TODO: optimize
     int tree_analyzer::find_assignable_function(const std::string &call_name, const std::vector<value_descriptor::E_VALUE_TYPE> &invoke_args, const function_shared_ptr_list_t &funcs) const {
 
         const std::size_t invoke_args_count = invoke_args.size();
@@ -910,4 +912,13 @@ namespace Freefoil {
 
         return get_greater_type(left_value_type, right_value_type) != value_descriptor::undefinedType;
     }
+
+    //possible implicit casts:
+    /*
+    str <-- int
+    str <-- bool
+    int <-- float
+    int <-- bool
+    float <-- bool
+    */
 }

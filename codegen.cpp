@@ -535,15 +535,41 @@ namespace Freefoil {
     }
 
     void codegen::code_emit_cast(value_descriptor::E_VALUE_TYPE src_type, value_descriptor::E_VALUE_TYPE cast_type) {
-        //TODO
-        assert(src_type != cast_type);
-        if (cast_type == value_descriptor::boolType) {
 
-        } else if (cast_type == value_descriptor::stringType) {
+        //possible implicit casts:
+        /*
+        str <-- int
+        str <-- bool
+        int <-- float
+        int <-- bool
+        float <-- bool
+        */
 
-        } else if (cast_type == value_descriptor::floatType) {
+        assert(src_type != cast_type and src_type != value_descriptor::stringType);
+        if (src_type == value_descriptor::boolType) {
+            assert(cast_type == value_descriptor::stringType or cast_type == value_descriptor::intType or cast_type == value_descriptor::floatType);
+            if (cast_type == value_descriptor::stringType) {
+                code_emit(OPCODE_b2str);
+            } else if (cast_type == value_descriptor::intType) {
+                //do nothing
+            } else if (cast_type == value_descriptor::floatType) {
+                code_emit(OPCODE_b2f);
+            } else {
+                assert(false);
+            }
+        } else if (src_type == value_descriptor::stringType) {
+            assert(false);
+        } else if (src_type == value_descriptor::floatType) {
+            assert(cast_type == value_descriptor::floatType);
+            if (cast_type == value_descriptor::intType) {
+                code_emit(OPCODE_f2i);
+            } else {
+                assert(false);
+            }
         } else {
-            assert(cast_type == value_descriptor::intType);
+            assert(src_type == value_descriptor::intType);
+            assert(cast_type == value_descriptor::stringType);
+            code_emit(OPCODE_i2str);
         }
     }
 

@@ -155,13 +155,4 @@ namespace Freefoil {
 
     script::script() {
     }
-    /*possible implicit casts:
-
-                      bool -> string
-                      bool -> int
-
-                      string -> int
-                      string -> bool
-                      string -> float
-    */
 }

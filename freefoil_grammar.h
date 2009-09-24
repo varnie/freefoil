@@ -75,6 +75,7 @@ namespace Freefoil {
                 ("or")
                 ("and")
                 ("not")
+                ("xor")
                 ;
             }
         };
@@ -156,9 +157,9 @@ namespace Freefoil {
 
                     stmt_end = discard_node_d[ch_p(';')];
 
-                    func_decl = func_head >> expected_stmt_end(stmt_end);
-
                     func_impl = func_head >> gen_pt_node_d[func_body];
+
+                    func_decl = func_head >> expected_stmt_end(stmt_end);
 
                     func_head = func_type >> expected_ident(ident) >> gen_pt_node_d[params_list];
 
@@ -172,9 +173,9 @@ namespace Freefoil {
 
                     func_call = ident >> gen_pt_node_d[invoke_args_list];
 
-                    invoke_args_list = expected_open_bracket(no_node_d[ch_p('(')])
-                                 >> !(gen_pt_node_d[bool_expr] >> *(no_node_d[ch_p(',')] >> expected_data(gen_pt_node_d[bool_expr])))
-                                 >> expected_closed_bracket(no_node_d[ch_p(')')]);
+                    invoke_args_list = /*expected_open_bracket(*/no_node_d[ch_p('(')]/*)*/
+                                       >> !(gen_pt_node_d[bool_expr] >> *(no_node_d[ch_p(',')] >> expected_data(gen_pt_node_d[bool_expr])))
+                                       >> /*expected_closed_bracket(*/no_node_d[ch_p(')')]/*)*/;
 
                     param = var_type >> !ref >> !ident;
 
@@ -186,7 +187,7 @@ namespace Freefoil {
 
                     ref = keyword_p("ref");
 
-                    var_declare_stmt_list = var_type >> expected_data(gen_pt_node_d[var_declare_tail] >> *(no_node_d[ch_p(',')] >> expected_data(gen_pt_node_d[var_declare_tail])) >> no_node_d[stmt_end]);
+                    var_declare_stmt_list = var_type >> gen_pt_node_d[var_declare_tail] >> *(no_node_d[ch_p(',')] >> expected_data(gen_pt_node_d[var_declare_tail])) >> expected_stmt_end(no_node_d[stmt_end]);
 
                     var_declare_tail = ident >> !(root_node_d[assign_op] >> expected_bool_expr(gen_pt_node_d[bool_expr]));
 
@@ -217,13 +218,13 @@ namespace Freefoil {
                     bool_constant = keyword_p("true") | keyword_p("false");
 
                     factor =
-                               ident
-                             | func_call
-                             | number
-                             | quoted_string
-                             | no_node_d[ch_p('(')] >> gen_pt_node_d[bool_expr] >> expected_closed_bracket(no_node_d[ch_p(')')])
-                             | bool_constant
-                    ;
+                          func_call
+                        | ident
+                        | number
+                        | quoted_string
+                        | no_node_d[ch_p('(')] >> gen_pt_node_d[bool_expr] >> expected_closed_bracket(no_node_d[ch_p(')')])
+                        | bool_constant
+                        ;
 
                     quoted_string = token_node_d[lexeme_d[confix_p('"', *c_escape_ch_p, '"')]];
 
@@ -233,13 +234,12 @@ namespace Freefoil {
                         stmt_end |
                         var_declare_stmt_list |
                         func_call >> no_node_d[stmt_end] |
-                        gen_pt_node_d[block];
-                        //TODO: add other alternatives
+                        gen_pt_node_d[block]
+                         //TODO: add other alternatives
+                        ;
 
-                    block = gen_ast_node_d[no_node_d[ch_p('{')] >> *stmt >>expected_closed_block(no_node_d[ch_p('}')])];
 
-                    // example of turning on the debugging info.
-                    BOOST_SPIRIT_DEBUG_RULE(script);
+                    block = gen_ast_node_d[no_node_d[ch_p('{')] >> *stmt >> expected_closed_block(no_node_d[ch_p('}')])];
                 }
 
                 GRAMMAR_RULE(script_ID) const &start() const {

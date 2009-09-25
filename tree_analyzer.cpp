@@ -1,7 +1,7 @@
 #include "tree_analyzer.h"
 #include "freefoil_grammar.h"
 #include "AST_defs.h"
-#include "exceptions.h"
+#include "defs.h"
 
 #include <iostream>
 #include <list>
@@ -149,10 +149,21 @@ namespace Freefoil {
         //TODO: add check that each func impl has "return stmt" in all "key points"
         //and other checks
 
+        if (funcs_list_.size() > Private::max_byte_value){
+            print_error("user functions limit exceeded");
+            ++errors_count_;
+        }
+
         std::cout << "errors: " << errors_count_ << std::endl;
         std::cout << "analyze end" << std::endl;
 
         return errors_count_ == 0;
+    }
+
+    const function_shared_ptr_list_t &tree_analyzer::get_parsed_funcs_list() const{
+
+        assert(errors_count_ == 0);
+        return funcs_list_;
     }
 
     void tree_analyzer::setup_core_funcs() {
@@ -685,6 +696,7 @@ namespace Freefoil {
                 //error. such variable is unknown
                 print_error(iter, "unknown ident " + name);
                 ++errors_count_;
+                stack_offset = -1;
             }
         }
 

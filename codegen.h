@@ -2,6 +2,7 @@
 #define CODEGEN_H_INCLUDED
 
 #include "AST_defs.h"
+#include "function_descriptor.h"
 #include "opcodes.h"
 
 #include <vector>
@@ -13,9 +14,10 @@ namespace Freefoil {
         using std::vector;
 
         class codegen {
-            typedef unsigned char BYTECODE;
-            typedef vector<BYTECODE> bytecode_stream_t;
-            typedef vector<bytecode_stream_t> funcs_bytecode_streams_t;
+            function_shared_ptr_list_t parsed_funcs_;
+        public:
+            typedef vector<function_descriptor::bytecode_stream_t> funcs_bytecode_streams_t;
+        private:
 
             funcs_bytecode_streams_t funcs_bytecodes_;
             std::size_t funcs_count_;
@@ -49,7 +51,7 @@ namespace Freefoil {
 
         public:
             codegen();
-            void exec(const iter_t &tree_top);
+            void exec(const iter_t &tree_top, const function_shared_ptr_list_t &parsed_funcs);
         };
     }
 }

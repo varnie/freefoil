@@ -14,9 +14,10 @@ namespace Freefoil {
     codegen::codegen():funcs_count_(0) {
     }
 
-    void codegen::exec(const iter_t &tree_top) {
+    void codegen::exec(const iter_t &tree_top, const function_shared_ptr_list_t &parsed_funcs) {
 
         std::cout << "codegen begin" << std::endl;
+        parsed_funcs_ = parsed_funcs;
 
         const parser_id id = tree_top->value.id();
         assert(id == freefoil_grammar::script_ID || id == freefoil_grammar::func_decl_ID || id == freefoil_grammar::func_impl_ID);
@@ -51,10 +52,12 @@ namespace Freefoil {
 
         assert(iter->value.id() == freefoil_grammar::func_impl_ID);
 
-        funcs_bytecodes_.push_back(bytecode_stream_t());
+        funcs_bytecodes_.push_back(function_descriptor::bytecode_stream_t());
         std::cout << "user function #" << funcs_count_ << " bytecode: ";
         codegen_func_body(iter->children.begin() + 1);
         std::cout << std::endl;
+        parsed_funcs_[funcs_count_]->set_bytecode_stream(funcs_bytecodes_[funcs_count_]);
+
         ++funcs_count_;
     }
 

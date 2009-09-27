@@ -1,8 +1,6 @@
 #ifndef OPCODES_H_INCLUDED
 #define OPCODES_H_INCLUDED
 
-#include <ostream>
-
 namespace Freefoil {
     namespace Private {
 
@@ -44,10 +42,18 @@ namespace Freefoil {
 
             OPCODE_call = 0x1a,
 
-            OPCODE_b2str,
-            OPCODE_b2f,
-            OPCODE_f2i,
-            OPCODE_i2str,
+            OPCODE_b2str = 0x1b,
+            OPCODE_b2f = 0x1b,
+            OPCODE_f2i = 0x1c,
+            OPCODE_i2str = 0x1d,
+            OPCODE_i2f = 0x1e,
+
+            OPCODE_true = 0x1f, //push 1 on top of stack
+            OPCODE_false = 0x20,//push 0 on top of stack
+
+            OPCODE_ftable_value = 0x21, //pop next offset, and push value from float table with that index
+            OPCODE_itable_value = 0x22, //...
+            OPCODE_stable_value = 0x23, //...
 
             //TODO: add other opcodes
         };

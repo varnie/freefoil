@@ -227,10 +227,10 @@ namespace Freefoil {
         assert(iter->value.id() == freefoil_grammar::bool_constant_ID);
 
         if (parse_str(iter) == "true") {
-            code_emit(OPCODE_ipush, 1);
+            code_emit(OPCODE_true);
         } else {
             assert(parse_str(iter) == "false");
-            code_emit(OPCODE_ipush, 0);
+            code_emit(OPCODE_false);
         }
     }
 
@@ -241,10 +241,10 @@ namespace Freefoil {
         const std::string number_as_str(parse_str(iter));
         if (number_as_str.find('.') != std::string::npos) {
             //it is float value
-            code_emit(OPCODE_fpush, (int) iter->value.value().get_index());
+            code_emit(OPCODE_ftable_value, (int) iter->value.value().get_index());
         } else {
             //it is int value
-            code_emit(OPCODE_ipush, (int) iter->value.value().get_index());
+            code_emit(OPCODE_itable_value, (int) iter->value.value().get_index());
         }
     }
 
@@ -252,7 +252,7 @@ namespace Freefoil {
 
         assert(iter->value.id() == freefoil_grammar::quoted_string_ID);
 
-        code_emit(OPCODE_spush, iter->value.value().get_index());
+        code_emit(OPCODE_stable_value, iter->value.value().get_index());
     }
 
     void codegen::codegen_ident(const iter_t &iter) {
@@ -260,7 +260,15 @@ namespace Freefoil {
         assert(iter->value.id() == freefoil_grammar::ident_ID);
 
         const node_attributes &n = iter->value.value();
-        code_emit(OPCODE_ipush, n.get_index());
+        value_descriptor::E_VALUE_TYPE var_type = n.get_value_type();
+        if (var_type == value_descriptor::boolType or var_type == value_descriptor::intType) {
+            code_emit(OPCODE_ipush, n.get_index());
+        } else if (var_type == value_descriptor::floatType) {
+            code_emit(OPCODE_fpush, n.get_index());
+        } else {
+            assert(var_type == value_descriptor::stringType);
+            code_emit(OPCODE_spush, n.get_index());
+        }
     }
 
     void codegen::codegen_func_call(const iter_t &iter) {
@@ -306,36 +314,34 @@ namespace Freefoil {
 
         assert(iter->value.id() == freefoil_grammar::or_xor_op_ID);
 
-        if (iter->children.begin()->value.id() == freefoil_grammar::or_xor_op_ID) {
-            codegen_or_xor_op(iter->children.begin());
+        iter_t left_iter = iter->children.begin();
+        iter_t right_iter = left_iter + 1;
+
+        if (left_iter->value.id() == freefoil_grammar::or_xor_op_ID) {
+            codegen_or_xor_op(left_iter);
         } else {
-            assert(iter->children.begin()->value.id() == freefoil_grammar::bool_term_ID);
-            assert((iter->children.begin() + 1)->value.id() == freefoil_grammar::bool_term_ID);
-
-            iter_t left_iter = iter->children.begin();
             codegen_bool_term(left_iter);
+        }
 
-            value_descriptor::E_VALUE_TYPE cast_type = get_cast(left_iter);
-            if (cast_type != value_descriptor::undefinedType) {
-                value_descriptor::E_VALUE_TYPE left_value_type = left_iter->value.value().get_value_type();
-                code_emit_cast(left_value_type, cast_type);
-            }
+        value_descriptor::E_VALUE_TYPE cast_type = get_cast(left_iter);
+        if (cast_type != value_descriptor::undefinedType) {
+            value_descriptor::E_VALUE_TYPE left_value_type = left_iter->value.value().get_value_type();
+            code_emit_cast(left_value_type, cast_type);
+        }
 
-            iter_t right_iter = left_iter + 1;
-            codegen_bool_term(right_iter);
+        codegen_bool_term(right_iter);
 
-            cast_type = get_cast(right_iter);
-            if (cast_type != value_descriptor::undefinedType) {
-                value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
-                code_emit_cast(right_value_type, cast_type);
-            }
+        cast_type = get_cast(right_iter);
+        if (cast_type != value_descriptor::undefinedType) {
+            value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
+            code_emit_cast(right_value_type, cast_type);
+        }
 
-            if (parse_str(iter) == "or") {
-                code_emit(OPCODE_or);
-            } else {
-                assert(parse_str(iter) == "xor");
-                code_emit(OPCODE_xor);
-            }
+        if (parse_str(iter) == "or") {
+            code_emit(OPCODE_or);
+        } else {
+            assert(parse_str(iter) == "xor");
+            code_emit(OPCODE_xor);
         }
     }
 
@@ -343,84 +349,80 @@ namespace Freefoil {
 
         assert(parse_str(iter) == "and");
 
-        if (parse_str(iter->children.begin()) == "and") {
-            codegen_and_op(iter->children.begin());
+        iter_t left_iter = iter->children.begin();
+        iter_t right_iter = left_iter + 1;
+
+        if (parse_str(left_iter) == "and") {
+            codegen_and_op(left_iter);
         } else {
-            assert(iter->children.begin()->value.id() == freefoil_grammar::bool_factor_ID);
-            assert((iter->children.begin() + 1)->value.id() == freefoil_grammar::bool_factor_ID);
-
-            iter_t left_iter = iter->children.begin();
             codegen_bool_factor(left_iter);
-
-            value_descriptor::E_VALUE_TYPE cast_type = get_cast(left_iter);
-            if (cast_type != value_descriptor::undefinedType) {
-                value_descriptor::E_VALUE_TYPE left_value_type = left_iter->value.value().get_value_type();
-                code_emit_cast(left_value_type, cast_type);
-            }
-
-            iter_t right_iter = left_iter + 1;
-            codegen_bool_factor(right_iter);
-
-            cast_type = get_cast(right_iter);
-            if (cast_type != value_descriptor::undefinedType) {
-                value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
-                code_emit_cast(right_value_type, cast_type);
-            }
-
-            code_emit(OPCODE_and);
         }
+
+        value_descriptor::E_VALUE_TYPE cast_type = get_cast(left_iter);
+        if (cast_type != value_descriptor::undefinedType) {
+        value_descriptor::E_VALUE_TYPE left_value_type = left_iter->value.value().get_value_type();
+            code_emit_cast(left_value_type, cast_type);
+        }
+
+        codegen_bool_factor(right_iter);
+
+        cast_type = get_cast(right_iter);
+        if (cast_type != value_descriptor::undefinedType) {
+        value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
+            code_emit_cast(right_value_type, cast_type);
+        }
+
+        code_emit(OPCODE_and);
     }
 
     void codegen::codegen_plus_minus_op(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::plus_minus_op_ID);
 
-        if (iter->children.begin()->value.id() == freefoil_grammar::plus_minus_op_ID) {
-            codegen_plus_minus_op(iter->children.begin());
+        iter_t left_iter = iter->children.begin();
+        iter_t right_iter = left_iter + 1;
+
+        if (left_iter->value.id() == freefoil_grammar::plus_minus_op_ID) {
+            codegen_plus_minus_op(left_iter);
         } else {
-            assert(iter->children.begin()->value.id() == freefoil_grammar::term_ID);
-            assert((iter->children.begin() + 1)->value.id() == freefoil_grammar::term_ID);
-
-            iter_t left_iter = iter->children.begin();
             codegen_term(left_iter);
+        }
 
-            value_descriptor::E_VALUE_TYPE cast_type = get_cast(left_iter);
-            if (cast_type != value_descriptor::undefinedType) {
-                value_descriptor::E_VALUE_TYPE left_value_type = left_iter->value.value().get_value_type();
-                code_emit_cast(left_value_type, cast_type);
-            }
+        value_descriptor::E_VALUE_TYPE cast_type = get_cast(left_iter);
+        if (cast_type != value_descriptor::undefinedType) {
+            value_descriptor::E_VALUE_TYPE left_value_type = left_iter->value.value().get_value_type();
+            code_emit_cast(left_value_type, cast_type);
+        }
 
-            iter_t right_iter = left_iter + 1;
-            codegen_term(right_iter);
+        codegen_term(right_iter);
 
-            cast_type = get_cast(right_iter);
-            if (cast_type != value_descriptor::undefinedType) {
-                value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
-                code_emit_cast(right_value_type, cast_type);
-            }
+        cast_type = get_cast(right_iter);
+        if (cast_type != value_descriptor::undefinedType) {
+            value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
+            code_emit_cast(right_value_type, cast_type);
+        }
 
-            value_descriptor::E_VALUE_TYPE value_type = iter->value.value().get_value_type();
+        value_descriptor::E_VALUE_TYPE value_type = iter->value.value().get_value_type();
 
-            if (parse_str(iter) == "+") {
+        if (parse_str(iter) == "+") {
 
-                if (value_type == value_descriptor::floatType) {
-                    code_emit(OPCODE_fadd);
-                } else if (value_type == value_descriptor::intType || value_type == value_descriptor::boolType) {
-                    code_emit(OPCODE_iadd);
-                } else if (value_type == value_descriptor::stringType) {
-                    code_emit(OPCODE_sadd);
-                } else {
-                    assert(false);
-                }
+            if (value_type == value_descriptor::floatType) {
+                code_emit(OPCODE_fadd);
+            } else if (value_type == value_descriptor::intType || value_type == value_descriptor::boolType) {
+                code_emit(OPCODE_iadd);
+            } else if (value_type == value_descriptor::stringType) {
+                code_emit(OPCODE_sadd);
             } else {
-                assert(parse_str(iter) == "-");
-                if (value_type == value_descriptor::floatType) {
-                    code_emit(OPCODE_fsub);
-                } else if (value_type == value_descriptor::intType || value_type == value_descriptor::boolType) {
-                    code_emit(OPCODE_isub);
-                } else {
-                    assert(false);
-                }
+                assert(false);
+            }
+        } else {
+            assert(parse_str(iter) == "-");
+            if (value_type == value_descriptor::floatType) {
+                code_emit(OPCODE_fsub);
+            } else if (value_type == value_descriptor::intType || value_type == value_descriptor::boolType) {
+                code_emit(OPCODE_isub);
+            } else {
+                assert(false);
             }
         }
     }
@@ -429,98 +431,92 @@ namespace Freefoil {
 
         assert(iter->value.id() == freefoil_grammar::mult_divide_op_ID);
 
-        if (iter->children.begin()->value.id() == freefoil_grammar::mult_divide_op_ID) {
-            codegen_mult_divide_op(iter->children.begin());
+        iter_t left_iter = iter->children.begin();
+        iter_t right_iter = left_iter + 1;
+
+        if (left_iter->value.id() == freefoil_grammar::mult_divide_op_ID) {
+            codegen_mult_divide_op(left_iter);
         } else {
-            assert(iter->children.begin()->value.id() == freefoil_grammar::factor_ID);
-            assert((iter->children.begin() + 1)->value.id() == freefoil_grammar::factor_ID);
-
-            iter_t left_iter = iter->children.begin();
             codegen_factor(left_iter);
+        }
 
-            value_descriptor::E_VALUE_TYPE cast_type = get_cast(left_iter);
-            if (cast_type != value_descriptor::undefinedType) {
-                value_descriptor::E_VALUE_TYPE left_value_type = left_iter->value.value().get_value_type();
-                code_emit_cast(left_value_type, cast_type);
-            }
+        value_descriptor::E_VALUE_TYPE cast_type = get_cast(left_iter);
+        if (cast_type != value_descriptor::undefinedType) {
+            value_descriptor::E_VALUE_TYPE left_value_type = left_iter->value.value().get_value_type();
+            code_emit_cast(left_value_type, cast_type);
+        }
 
-            iter_t right_iter = left_iter + 1;
-            codegen_factor(right_iter);
+        codegen_factor(right_iter);
+        cast_type = get_cast(right_iter);
+        if (cast_type != value_descriptor::undefinedType) {
+            value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
+            code_emit_cast(right_value_type, cast_type);
+        }
 
-            cast_type = get_cast(right_iter);
-            if (cast_type != value_descriptor::undefinedType) {
-                value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
-                code_emit_cast(right_value_type, cast_type);
-            }
+        value_descriptor::E_VALUE_TYPE value_type = iter->value.value().get_value_type();
 
-            value_descriptor::E_VALUE_TYPE value_type = iter->value.value().get_value_type();
+        if (parse_str(iter) == "*") {
 
-            if (parse_str(iter) == "*") {
-
-                if (value_type == value_descriptor::floatType) {
-                    code_emit(OPCODE_fmul);
-                } else if (value_type == value_descriptor::intType || value_type == value_descriptor::boolType) {
-                    code_emit(OPCODE_imul);
-                } else {
-                    assert(false);
-                }
+            if (value_type == value_descriptor::floatType) {
+                code_emit(OPCODE_fmul);
+            } else if (value_type == value_descriptor::intType || value_type == value_descriptor::boolType) {
+                code_emit(OPCODE_imul);
             } else {
-                assert(parse_str(iter) == "/");
-                if (value_type == value_descriptor::floatType) {
-                    code_emit(OPCODE_fdiv);
-                } else if (value_type == value_descriptor::intType || value_type == value_descriptor::boolType) {
-                    code_emit(OPCODE_idiv);
-                } else {
-                    assert(false);
-                }
+                assert(false);
+            }
+        } else {
+            assert(parse_str(iter) == "/");
+            if (value_type == value_descriptor::floatType) {
+                code_emit(OPCODE_fdiv);
+            } else if (value_type == value_descriptor::intType || value_type == value_descriptor::boolType) {
+                code_emit(OPCODE_idiv);
+            } else {
+                assert(false);
             }
         }
     }
-
 
     void codegen::codegen_cmp_op(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::cmp_op_ID);
 
-        if (iter->children.begin()->value.id() == freefoil_grammar::cmp_op_ID) {
-            codegen_cmp_op(iter->children.begin());
+        iter_t left_iter = iter->children.begin();
+        iter_t right_iter = left_iter + 1;
+
+        if (left_iter->value.id() == freefoil_grammar::cmp_op_ID) {
+            codegen_cmp_op(left_iter);
         } else {
-            assert(iter->children.begin()->value.id() == freefoil_grammar::expr_ID);
-            assert((iter->children.begin() + 1)->value.id() == freefoil_grammar::expr_ID);
-
-            iter_t left_iter = iter->children.begin();
             codegen_expr(left_iter);
+        }
 
-            value_descriptor::E_VALUE_TYPE cast_type = get_cast(left_iter);
-            if (cast_type != value_descriptor::undefinedType) {
-                value_descriptor::E_VALUE_TYPE left_value_type = left_iter->value.value().get_value_type();
-                code_emit_cast(left_value_type, cast_type);
-            }
+        value_descriptor::E_VALUE_TYPE cast_type = get_cast(left_iter);
+        if (cast_type != value_descriptor::undefinedType) {
+            value_descriptor::E_VALUE_TYPE left_value_type = left_iter->value.value().get_value_type();
+            code_emit_cast(left_value_type, cast_type);
+        }
 
-            iter_t right_iter = left_iter + 1;
-            codegen_expr(right_iter);
+        codegen_expr(right_iter);
 
-            cast_type = get_cast(right_iter);
-            if (cast_type != value_descriptor::undefinedType) {
-                value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
-                code_emit_cast(right_value_type, cast_type);
-            }
+        cast_type = get_cast(right_iter);
+        if (cast_type != value_descriptor::undefinedType) {
+            value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
+            code_emit_cast(right_value_type, cast_type);
+        }
 
-            const std::string cmp_operation_as_str(parse_str(iter));
-            if (cmp_operation_as_str == "==") {
-                code_emit(OPCODE_eq);
-            } else if (cmp_operation_as_str == "!=") {
-                code_emit(OPCODE_neq);
-            } else if (cmp_operation_as_str == "<=") {
-                code_emit(OPCODE_leq);
-            } else if (cmp_operation_as_str == ">=") {
-                code_emit(OPCODE_geq);
-            } else if (cmp_operation_as_str == "<") {
-                code_emit(OPCODE_less);
-            } else {
-                assert(cmp_operation_as_str == ">");
-                code_emit(OPCODE_greater);
-            }
+        const std::string cmp_operation_as_str(parse_str(iter));
+        if (cmp_operation_as_str == "==") {
+            code_emit(OPCODE_eq);
+        } else if (cmp_operation_as_str == "!=") {
+            code_emit(OPCODE_neq);
+        } else if (cmp_operation_as_str == "<=") {
+            code_emit(OPCODE_leq);
+        } else if (cmp_operation_as_str == ">=") {
+            code_emit(OPCODE_geq);
+        } else if (cmp_operation_as_str == "<") {
+            code_emit(OPCODE_less);
+        } else {
+            assert(cmp_operation_as_str == ">");
+            code_emit(OPCODE_greater);
         }
     }
 
@@ -571,8 +567,12 @@ namespace Freefoil {
             }
         } else {
             assert(src_type == value_descriptor::intType);
-            assert(cast_type == value_descriptor::stringType);
-            code_emit(OPCODE_i2str);
+            assert(cast_type == value_descriptor::stringType or cast_type == value_descriptor::floatType);
+            if (cast_type == value_descriptor::floatType) {
+                code_emit(OPCODE_i2f);
+            } else {
+                code_emit(OPCODE_i2str);
+            }
         }
     }
 

@@ -28,13 +28,13 @@ namespace Freefoil {
 
     bool function_heads_equal_functor(const function_shared_ptr_t &func, const function_shared_ptr_t &the_func) {
         return
-                     func->get_name() == the_func->get_name()
-                 &&  func->get_param_descriptors().size() == the_func->get_param_descriptors().size()
-                 &&  std::equal(
-                         func->get_param_descriptors().begin(), func->get_param_descriptors().end(),
-                         the_func->get_param_descriptors().begin(),
-                         &param_descriptors_types_equal_functor
-                     );
+            func->get_name() == the_func->get_name()
+            &&  func->get_param_descriptors().size() == the_func->get_param_descriptors().size()
+            &&  std::equal(
+                func->get_param_descriptors().begin(), func->get_param_descriptors().end(),
+                the_func->get_param_descriptors().begin(),
+                &param_descriptors_types_equal_functor
+            );
     }
 
     //TODO: optimize
@@ -78,10 +78,6 @@ namespace Freefoil {
 
     bool function_has_no_body_functor(const function_shared_ptr_t &the_func) {
         return 	!the_func->has_body();
-    }
-
-    bool entry_point_functor(const function_shared_ptr_t &the_func) {
-        return 	the_func->get_name() == "main";
     }
 
     bool param_descriptor_has_name_functor(const param_descriptor_shared_ptr_t &the_param_descriptor, const std::string &the_name) {
@@ -149,7 +145,7 @@ namespace Freefoil {
         //TODO: add check that each func impl has "return stmt" in all "key points"
         //and other checks
 
-        if (funcs_list_.size() > Private::max_byte_value){
+        if (funcs_list_.size() > Private::max_byte_value) {
             print_error("user functions limit exceeded");
             ++errors_count_;
         }
@@ -160,7 +156,7 @@ namespace Freefoil {
         return errors_count_ == 0;
     }
 
-    const function_shared_ptr_list_t &tree_analyzer::get_parsed_funcs_list() const{
+    const function_shared_ptr_list_t &tree_analyzer::get_parsed_funcs_list() const {
 
         assert(errors_count_ == 0);
         return funcs_list_;
@@ -430,29 +426,27 @@ namespace Freefoil {
 
         assert(iter->value.id() == freefoil_grammar::or_xor_op_ID);
 
-        if (iter->children.begin()->value.id() == freefoil_grammar::or_xor_op_ID) {
-            parse_or_xor_op(iter->children.begin());
-            create_attributes(iter, iter->children.begin()->value.value().get_value_type());
+        iter_t left_iter = iter->children.begin();
+        iter_t right_iter = left_iter + 1;
+
+        if (left_iter->value.id() == freefoil_grammar::or_xor_op_ID) {
+            parse_or_xor_op(left_iter);
+            create_attributes(iter, left_iter->value.value().get_value_type());
         } else {
-            assert(iter->children.begin()->value.id() == freefoil_grammar::bool_term_ID);
-            assert((iter->children.begin() + 1)->value.id() == freefoil_grammar::bool_term_ID);
-
-            iter_t left_iter = iter->children.begin();
-            iter_t right_iter = left_iter + 1;
-
             parse_bool_term(left_iter);
-            parse_bool_term(right_iter);
+        }
 
-            value_descriptor::E_VALUE_TYPE left_value_type = left_iter->value.value().get_value_type();
-            value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
+        parse_bool_term(right_iter);
 
-            if (left_value_type != value_descriptor::boolType or right_value_type != value_descriptor::boolType) {
-                print_error(iter, "bool types expected for \"" + parse_str(iter) + "\" operator");
-                ++errors_count_;
-                create_attributes(iter, value_descriptor::undefinedType);
-            } else {
-                create_attributes(iter, value_descriptor::boolType);
-            }
+        value_descriptor::E_VALUE_TYPE left_value_type = left_iter->value.value().get_value_type();
+        value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
+
+        if (left_value_type != value_descriptor::boolType or right_value_type != value_descriptor::boolType) {
+            print_error(iter, "bool types expected for \"" + parse_str(iter) + "\" operator");
+            ++errors_count_;
+            create_attributes(iter, value_descriptor::undefinedType);
+        } else {
+            create_attributes(iter, value_descriptor::boolType);
         }
     }
 
@@ -460,158 +454,151 @@ namespace Freefoil {
 
         assert(parse_str(iter) == "and");
 
-        if (parse_str(iter->children.begin()) == "and") {
-            parse_and_op(iter->children.begin());
-            create_attributes(iter, iter->children.begin()->value.value().get_value_type());
+        iter_t left_iter = iter->children.begin();
+        iter_t right_iter = left_iter + 1;
+
+        if (parse_str(left_iter) == "and") {
+            parse_and_op(left_iter);
+            create_attributes(iter, left_iter->value.value().get_value_type());
         } else {
-            assert(iter->children.begin()->value.id() == freefoil_grammar::bool_factor_ID);
-            assert((iter->children.begin() + 1)->value.id() == freefoil_grammar::bool_factor_ID);
-
-            iter_t left_iter = iter->children.begin();
-            iter_t right_iter = left_iter + 1;
-
             parse_bool_factor(left_iter);
-            parse_bool_factor(right_iter);
+        }
 
-            value_descriptor::E_VALUE_TYPE left_value_type = left_iter->value.value().get_value_type();
-            value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
+        parse_bool_factor(right_iter);
 
-            if (left_value_type != value_descriptor::boolType or right_value_type != value_descriptor::boolType) {
-                print_error(iter, "bool types expected for \"and\" operator");
-                ++errors_count_;
-                create_attributes(iter, value_descriptor::undefinedType);
-            } else {
-                create_attributes(iter, value_descriptor::boolType);
-            }
+        value_descriptor::E_VALUE_TYPE left_value_type = left_iter->value.value().get_value_type();
+        value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
+
+        if (left_value_type != value_descriptor::boolType or right_value_type != value_descriptor::boolType) {
+            print_error(iter, "bool types expected for \"and\" operator");
+            ++errors_count_;
+            create_attributes(iter, value_descriptor::undefinedType);
+        } else {
+            create_attributes(iter, value_descriptor::boolType);
         }
     }
+
 
     void tree_analyzer::parse_plus_minus_op(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::plus_minus_op_ID);
 
-        if (iter->children.begin()->value.id() == freefoil_grammar::plus_minus_op_ID) {
-            parse_plus_minus_op(iter->children.begin());
-            create_attributes(iter, iter->children.begin()->value.value().get_value_type());
+        iter_t left_iter = iter->children.begin();
+        iter_t right_iter = left_iter + 1;
+
+        if (left_iter->value.id() == freefoil_grammar::plus_minus_op_ID) {
+            parse_plus_minus_op(left_iter);
+            create_attributes(iter, left_iter->value.value().get_value_type());
         } else {
-            assert(iter->children.begin()->value.id() == freefoil_grammar::term_ID);
-            assert((iter->children.begin() + 1)->value.id() == freefoil_grammar::term_ID);
-
-            iter_t left_iter = iter->children.begin();
-            iter_t right_iter = left_iter + 1;
-
             parse_term(left_iter);
-            parse_term(right_iter);
+        }
 
-            value_descriptor::E_VALUE_TYPE left_value_type = left_iter->value.value().get_value_type();
-            value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
+        parse_term(right_iter);
 
-            create_attributes(iter, get_greatest_common_type(left_value_type,
-                              right_value_type));
+        value_descriptor::E_VALUE_TYPE left_value_type = left_iter->value.value().get_value_type();
+        value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
 
-            value_descriptor::E_VALUE_TYPE iter_value_type = iter->value.value().get_value_type();
+        create_attributes(iter, get_greatest_common_type(left_value_type,
+                          right_value_type));
 
-            if (iter_value_type == value_descriptor::undefinedType) {
-                if (parse_str(iter) == "+") {
-                    print_error(iter, "cannot add expressions of types " + type_to_string(left_value_type) + " and " + type_to_string(right_value_type));
-                } else {
-                    assert(parse_str(iter) == "-");
-                    print_error(iter, "cannot subtract expressions of types " + type_to_string(left_value_type) + " and " + type_to_string(right_value_type));
-                }
-                ++errors_count_;
+        value_descriptor::E_VALUE_TYPE iter_value_type = iter->value.value().get_value_type();
+
+        if (iter_value_type == value_descriptor::undefinedType) {
+            if (parse_str(iter) == "+") {
+                print_error(iter, "cannot add expressions of types " + type_to_string(left_value_type) + " and " + type_to_string(right_value_type));
             } else {
-                if (iter_value_type != left_value_type) {
-                    create_cast(left_iter, iter_value_type);
-                }
-                if (iter_value_type != right_value_type) {
-                    create_cast(right_iter, iter_value_type);
-                }
+                assert(parse_str(iter) == "-");
+                print_error(iter, "cannot subtract expressions of types " + type_to_string(left_value_type) + " and " + type_to_string(right_value_type));
+            }
+            ++errors_count_;
+        } else {
+            if (iter_value_type != left_value_type) {
+                create_cast(left_iter, iter_value_type);
+            }
+            if (iter_value_type != right_value_type) {
+                create_cast(right_iter, iter_value_type);
             }
         }
+
     }
 
     void tree_analyzer::parse_mult_divide_op(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::mult_divide_op_ID);
 
-        if (iter->children.begin()->value.id() == freefoil_grammar::mult_divide_op_ID) {
-            parse_mult_divide_op(iter->children.begin());
-            create_attributes(iter, iter->children.begin()->value.value().get_value_type());
+        iter_t left_iter = iter->children.begin();
+        iter_t right_iter = left_iter + 1;
+
+        if (left_iter->value.id() == freefoil_grammar::mult_divide_op_ID) {
+            parse_mult_divide_op(left_iter);
+            create_attributes(iter, left_iter->value.value().get_value_type());
         } else {
-            assert(iter->children.begin()->value.id() == freefoil_grammar::factor_ID);
-            assert((iter->children.begin() + 1)->value.id() == freefoil_grammar::factor_ID);
-
-            iter_t left_iter = iter->children.begin();
-            iter_t right_iter = left_iter + 1;
-
             parse_factor(left_iter);
-            parse_factor(right_iter);
+        }
 
-            value_descriptor::E_VALUE_TYPE left_value_type = left_iter->value.value().get_value_type();
-            value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
+        parse_factor(right_iter);
 
-            create_attributes(iter, get_greatest_common_type(left_value_type,
-                              right_value_type));
+        value_descriptor::E_VALUE_TYPE left_value_type = left_iter->value.value().get_value_type();
+        value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
 
-            value_descriptor::E_VALUE_TYPE iter_value_type = iter->value.value().get_value_type();
+        create_attributes(iter, get_greatest_common_type(left_value_type,
+                          right_value_type));
 
-            if (iter_value_type == value_descriptor::undefinedType) {
-                if (parse_str(iter) == "*") {
-                    print_error(iter, "cannot multiplicate expressions of types " + type_to_string(left_value_type) + " and " + type_to_string(right_value_type));
-                } else {
-                    assert(parse_str(iter) == "/");
-                    print_error(iter, "cannot divide expressions of types " + type_to_string(left_value_type) + " and " + type_to_string(right_value_type));
-                }
-                ++errors_count_;
+        value_descriptor::E_VALUE_TYPE iter_value_type = iter->value.value().get_value_type();
+
+        if (iter_value_type == value_descriptor::undefinedType) {
+            if (parse_str(iter) == "*") {
+                print_error(iter, "cannot multiplicate expressions of types " + type_to_string(left_value_type) + " and " + type_to_string(right_value_type));
             } else {
-                if (iter_value_type != left_value_type) {
-                    create_cast(left_iter, iter_value_type);
-                }
-                if (iter_value_type != right_value_type) {
-                    create_cast(right_iter, iter_value_type);
-                }
+                assert(parse_str(iter) == "/");
+                print_error(iter, "cannot divide expressions of types " + type_to_string(left_value_type) + " and " + type_to_string(right_value_type));
+            }
+            ++errors_count_;
+        } else {
+            if (iter_value_type != left_value_type) {
+                create_cast(left_iter, iter_value_type);
+            }
+            if (iter_value_type != right_value_type) {
+                create_cast(right_iter, iter_value_type);
             }
         }
     }
-
 
     void tree_analyzer::parse_cmp_op(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::cmp_op_ID);
 
-        if (iter->children.begin()->value.id() == freefoil_grammar::cmp_op_ID) {
-            parse_cmp_op(iter->children.begin());
-            create_attributes(iter, iter->children.begin()->value.value().get_value_type());
+        iter_t left_iter = iter->children.begin();
+        iter_t right_iter = left_iter + 1;
+
+        if (left_iter->value.id() == freefoil_grammar::cmp_op_ID) {
+            parse_cmp_op(left_iter);
+            create_attributes(iter, left_iter->value.value().get_value_type());
         } else {
-            assert(iter->children.begin()->value.id() == freefoil_grammar::expr_ID);
-            assert((iter->children.begin() + 1)->value.id() == freefoil_grammar::expr_ID);
-
-            iter_t left_iter = iter->children.begin();
-            iter_t right_iter = left_iter + 1;
-
             parse_expr(left_iter);
-            parse_expr(right_iter);
+        }
 
-            value_descriptor::E_VALUE_TYPE left_value_type = left_iter->value.value().get_value_type();
-            value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
+        parse_expr(right_iter);
 
-            create_attributes(iter, get_greatest_common_type(left_value_type,
-                              right_value_type));
+        value_descriptor::E_VALUE_TYPE left_value_type = left_iter->value.value().get_value_type();
+        value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
 
-            value_descriptor::E_VALUE_TYPE iter_value_type = iter->value.value().get_value_type();
+        create_attributes(iter, get_greatest_common_type(left_value_type,
+                          right_value_type));
 
-            if (iter_value_type == value_descriptor::undefinedType) {
-                print_error(iter, "cannot compare expressions of types " + type_to_string(left_value_type) + " and " + type_to_string(right_value_type));
-                ++errors_count_;
-            } else {
-                if (iter_value_type != left_value_type) {
-                    create_cast(left_iter, iter_value_type);
-                }
-                if (iter_value_type != right_value_type) {
-                    create_cast(right_iter, iter_value_type);
-                }
-                create_attributes(iter, value_descriptor::boolType);
+        value_descriptor::E_VALUE_TYPE iter_value_type = iter->value.value().get_value_type();
+
+        if (iter_value_type == value_descriptor::undefinedType) {
+            print_error(iter, "cannot compare expressions of types " + type_to_string(left_value_type) + " and " + type_to_string(right_value_type));
+            ++errors_count_;
+        } else {
+            if (iter_value_type != left_value_type) {
+                create_cast(left_iter, iter_value_type);
             }
+            if (iter_value_type != right_value_type) {
+                create_cast(right_iter, iter_value_type);
+            }
+            create_attributes(iter, value_descriptor::boolType);
         }
     }
 
@@ -622,12 +609,11 @@ namespace Freefoil {
         const parser_id id = iter->children.begin()->value.id();
         if (id == freefoil_grammar::bool_term_ID) {
             parse_bool_term(iter->children.begin());
-            create_attributes(iter, iter->children.begin()->value.value().get_value_type());
         } else {
             assert(id == freefoil_grammar::or_xor_op_ID);
             parse_or_xor_op(iter->children.begin());
-            create_attributes(iter, iter->children.begin()->value.value().get_value_type());
         }
+        create_attributes(iter, iter->children.begin()->value.value().get_value_type());
     }
 
     void tree_analyzer::parse_expr(const iter_t &iter) {
@@ -639,22 +625,20 @@ namespace Freefoil {
             const parser_id id = (iter->children.begin() + 1)->value.id();
             if (id == freefoil_grammar::term_ID) {
                 parse_term(iter->children.begin() + 1);
-                create_attributes(iter, (iter->children.begin() + 1)->value.value().get_value_type());
             } else {
                 assert(id == freefoil_grammar::plus_minus_op_ID);
                 parse_plus_minus_op(iter->children.begin() + 1);
-                create_attributes(iter, (iter->children.begin() + 1)->value.value().get_value_type());
             }
+            create_attributes(iter, (iter->children.begin() + 1)->value.value().get_value_type());
         } else {
             const parser_id id = iter->children.begin()->value.id();
             if (id == freefoil_grammar::term_ID) {
                 parse_term(iter->children.begin());
-                create_attributes(iter, iter->children.begin()->value.value().get_value_type());
             } else {
                 assert(id == freefoil_grammar::plus_minus_op_ID);
                 parse_plus_minus_op(iter->children.begin());
-                create_attributes(iter, iter->children.begin()->value.value().get_value_type());
             }
+            create_attributes(iter, iter->children.begin()->value.value().get_value_type());
         }
     }
 
@@ -664,12 +648,11 @@ namespace Freefoil {
 
         if (iter->children.begin()->value.id() == freefoil_grammar::factor_ID) {
             parse_factor(iter->children.begin());
-            create_attributes(iter, iter->children.begin()->value.value().get_value_type());
         } else {
             assert(iter->children.begin()->value.id() == freefoil_grammar::mult_divide_op_ID);
             parse_mult_divide_op(iter->children.begin());
-            create_attributes(iter, iter->children.begin()->value.value().get_value_type());
         }
+        create_attributes(iter, iter->children.begin()->value.value().get_value_type());
     }
 
     void tree_analyzer::parse_ident(const iter_t &iter) {
@@ -925,12 +908,13 @@ namespace Freefoil {
         return get_greater_type(left_value_type, right_value_type) != value_descriptor::undefinedType;
     }
 
-    //possible implicit casts:
+//possible implicit casts:
     /*
-    str <-- int
-    str <-- bool
-    int <-- float
-    int <-- bool
+    str   <-- int
+    float <-  int
+    str   <-- bool
+    int   <-- float
+    int   <-- bool
     float <-- bool
     */
 }

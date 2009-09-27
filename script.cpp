@@ -4,6 +4,7 @@
 #include "tree_analyzer.h"
 #include "codegen.h"
 #include "writer.h"
+#include "freefoil_vm.h"
 
 #include <iostream>
 #if defined(BOOST_SPIRIT_DUMP_PARSETREE_AS_XML)
@@ -77,7 +78,9 @@ namespace Freefoil {
             if (parse(str, the_parse_info)){
                 if (the_tree_analyzer.parse(the_parse_info.trees.begin())) {
                     the_codegen.exec(the_parse_info.trees.begin(), the_tree_analyzer.get_parsed_funcs_list());
-                    the_writer.write(the_tree_analyzer.get_parsed_funcs_list(), "output.ffl");
+                    //the_writer.write(the_tree_analyzer.get_parsed_funcs_list(), "output.ffl");
+                    freefoil_vm the_freefoil_vm;
+                    the_freefoil_vm.exec(the_tree_analyzer.get_parsed_funcs_list());
                 }
             }
         }

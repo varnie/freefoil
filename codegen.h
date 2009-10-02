@@ -5,22 +5,42 @@
 #include "function_descriptor.h"
 #include "opcodes.h"
 
+#include <list>
 #include <vector>
+#include <stack>
+
+#include <boost/shared_ptr.hpp>
 
 namespace Freefoil {
     namespace Private {
 
         using Private::iter_t;
         using std::vector;
+        using std::list;
+        using std::string;
+        using std::stack;
+
+        using boost::shared_ptr;
 
         class codegen {
-            function_shared_ptr_list_t parsed_funcs_;
-        public:
-            typedef vector<function_descriptor::bytecode_stream_t> funcs_bytecode_streams_t;
         private:
+            class code_chunk;
+            typedef shared_ptr<code_chunk> code_chunk_shared_ptr_t;
 
-            funcs_bytecode_streams_t funcs_bytecodes_;
-            std::size_t funcs_count_;
+            typedef struct code_chunk {
+                function_descriptor::BYTECODE bytecode_;
+                bool is_plug_;  //to be patched later
+                code_chunk_shared_ptr_t jump_dst_; //if is_plug_ == true, then we must patch our bytecode_ with the address of jump_dst_->pnext_ instruction
+            } code_chunk_t;
+
+            typedef vector<code_chunk_shared_ptr_t> jumps_t;
+            stack<jumps_t> true_jmps_, false_jmps_;
+
+            typedef list<code_chunk_shared_ptr_t> bytecode_stream_t;
+            typedef vector<bytecode_stream_t> bytecode_streams_t;
+            bytecode_streams_t bytecode_streams_;
+
+            function_shared_ptr_list_t parsed_funcs_;
 
             void codegen_script(const iter_t &iter);
             void codegen_func_impl(const iter_t &iter);
@@ -45,9 +65,12 @@ namespace Freefoil {
             void codegen_mult_divide_op(const iter_t &iter);
             void codegen_plus_minus_op(const iter_t &iter);
 
-            void code_emit(OPCODE_KIND opcode);
-            void code_emit(OPCODE_KIND opcode, std::size_t index);
+            void code_emit_branch(function_descriptor::BYTECODE opcode);
+            void code_emit(function_descriptor::BYTECODE opcode);
+            void code_emit(function_descriptor::BYTECODE opcode, std::size_t index);
             void code_emit_cast(value_descriptor::E_VALUE_TYPE src_type, value_descriptor::E_VALUE_TYPE cast_type);
+            void code_emit_plug();
+            void set_jumps_dsts(vector<code_chunk_shared_ptr_t> &jumps_table, const code_chunk_shared_ptr_t &dst_code_chunk);
 
         public:
             codegen();

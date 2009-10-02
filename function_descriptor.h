@@ -83,11 +83,11 @@ namespace Freefoil {
                 return iter_body_;
             }
 
-            std::size_t get_param_descriptors_count() const {
+            int get_param_descriptors_count() const {
                 return param_descriptors_list_.size();
             }
 
-            std::size_t add_int_constant(const int i) {
+            int add_int_constant(const int i) {
                 if (std::count(int_table_.begin(), int_table_.end(), i) == 0) {
                     int_table_.push_back(i);
                     return int_table_.size() - 1;
@@ -96,7 +96,7 @@ namespace Freefoil {
                 }
             }
 
-            std::size_t add_float_constant(const float f) {
+            int add_float_constant(const float f) {
                 if (std::count(float_table_.begin(), float_table_.end(), f) == 0) {
                     float_table_.push_back(f);
                     return float_table_.size() - 1;
@@ -105,7 +105,7 @@ namespace Freefoil {
                 }
             }
 
-            std::size_t add_string_constant(const std::string &str) {
+            int add_string_constant(const std::string &str) {
                 if (std::count(string_table_.begin(), string_table_.end(), str) == 0) {
                     string_table_.push_back(str);
                     return string_table_.size() - 1;
@@ -114,25 +114,23 @@ namespace Freefoil {
                 }
             }
 
-            std::size_t get_index_of_string_constant(const std::string &str) const {
+            int get_index_of_string_constant(const std::string &str) const {
                 assert(std::count(string_table_.begin(), string_table_.end(), str) == 1);
                 return std::distance(string_table_.begin(), std::find(string_table_.begin(), string_table_.end(), str));
             }
 
-            std::size_t get_index_of_float_constant(const float f) const {
+            int get_index_of_float_constant(const float f) const {
                 assert(std::count(float_table_.begin(), float_table_.end(), f) == 1);
                 return std::distance(float_table_.begin(), std::find(float_table_.begin(), float_table_.end(), f));
             }
 
-            std::size_t get_index_of_int_constant(const int i) const {
+            int get_index_of_int_constant(const int i) const {
                 assert(std::count(int_table_.begin(), int_table_.end(), i) == 1);
                 return std::distance(int_table_.begin(), std::find(int_table_.begin(), int_table_.end(), i));
             }
 
             int get_int_value_from_table(const std::size_t index) const{
-                int res = int_table_[index];
-
-                return res;
+                return int_table_[index];
             }
 
             float get_float_value_from_table(const std::size_t index) const{
@@ -150,7 +148,7 @@ namespace Freefoil {
             const bytecode_stream_t &get_bytecode_stream() const {
                 return bytecode_stream_;
             }
-
+        private:
             template<class Archive>
             void serialize(Archive & ar, const unsigned int version) {
                 ar & bytecode_stream_;

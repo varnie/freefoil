@@ -20,9 +20,21 @@ namespace Freefoil{
                     float the_f;
                     const char *the_c;
                 };
-                explicit value(const int i):the_i(i){}
-                explicit value(const float f):the_f(f){}
-                explicit value(const char *c):the_c(c){}
+                enum t{
+                    int_type,
+                    float_type,
+                    char_type,
+                };
+                t the_type;
+
+                explicit value(const int i):the_i(i), the_type(int_type){}
+                explicit value(const float f):the_f(f), the_type(float_type){}
+                explicit value(const char *c):the_c(c), the_type(char_type){}
+
+                value operator - (){
+                    assert(the_type == int_type or the_type == float_type);
+                    return the_type == int_type ? value(- the_i) : value( - the_f);
+                }
             } value_t;
 
             typedef std::vector<value_t> stack_t;
@@ -57,14 +69,14 @@ namespace Freefoil{
                     }
 
                     switch (*iter){
-                        case OPCODE_itable_value:
-                            handle_itable_value(iter);
+                        case OPCODE_ipush:
+                            handle_ipush(iter);
                             break;
-                        case OPCODE_ftable_value:
-                            handle_ftable_value(iter);
+                        case OPCODE_fpush:
+                            handle_fpush(iter);
                             break;
-                        case OPCODE_stable_value:
-                            handle_stable_value(iter);
+                        case OPCODE_spush:
+                            handle_spush(iter);
                             break;
                         case OPCODE_istore:
                             handle_istore(iter);
@@ -102,7 +114,9 @@ namespace Freefoil{
                         case OPCODE_sadd:
                             handle_sadd(iter);
                             break;
-
+                        case OPCODE_negate:
+                            handle_negate(iter);
+                            break;
 
                         //TODO
                     }
@@ -111,7 +125,7 @@ namespace Freefoil{
 
             private:
 
-            inline void handle_itable_value(Private::function_descriptor::bytecode_stream_t::const_iterator &iter){
+            inline void handle_ipush(Private::function_descriptor::bytecode_stream_t::const_iterator &iter){
                 std::size_t index = *++iter;
                 int value = curr_executing_func_->get_int_value_from_table(index);
                 stack_.push_back(value_t(value));
@@ -119,14 +133,14 @@ namespace Freefoil{
                 ++iter;
             }
 
-            inline void handle_ftable_value(Private::function_descriptor::bytecode_stream_t::const_iterator &iter){
+            inline void handle_fpush(Private::function_descriptor::bytecode_stream_t::const_iterator &iter){
                 float value = curr_executing_func_->get_float_value_from_table(*++iter);
                 stack_.push_back(value_t(value));
                 ++stack_top_;
                 ++iter;
             }
 
-            inline void handle_stable_value(Private::function_descriptor::bytecode_stream_t::const_iterator &iter){
+            inline void handle_spush(Private::function_descriptor::bytecode_stream_t::const_iterator &iter){
                 const char *value = curr_executing_func_->get_string_value_from_table(*++iter);
                 stack_.push_back(value_t(value));
                 ++stack_top_;
@@ -179,6 +193,8 @@ namespace Freefoil{
                     //TODO: handle divizion by zero run-time error
                 }
                 push_value(value_t(value1 / value2));
+                int result = value1 / value2;
+            std::cout << result ;
                 ++iter;
             }
 
@@ -221,8 +237,15 @@ namespace Freefoil{
                 ++iter;
             }
 
+            inline void handle_negate(Private::function_descriptor::bytecode_stream_t::const_iterator &iter){
+                value_t v = pop_value();
+                push_value(- v);
+                ++iter;
+            }
+
             inline value_t pop_value(){
                 value_t v = stack_.back();
+                stack_.pop_back();
                 --stack_top_;
                 return v;
             }

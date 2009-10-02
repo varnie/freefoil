@@ -1,6 +1,7 @@
 #ifndef VALUE_DESCRIPTOR_H_INCLUDED
 #define VALUE_DESCRIPTOR_H_INCLUDED
 
+#include <cassert>
 #include <string>
 
 namespace Freefoil {

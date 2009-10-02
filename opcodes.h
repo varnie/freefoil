@@ -5,55 +5,59 @@ namespace Freefoil {
     namespace Private {
 
         enum OPCODE_KIND {
-            OPCODE_ipush = 0x0,
-            OPCODE_fpush = 0x1,
-            OPCODE_spush = 0x2, //push string to the top of stack
 
-            OPCODE_istore = 0x3, //pop the int value from the top of stack and store to the variable
-            OPCODE_fstore = 0x4,
-            OPCODE_sstore = 0x5,
+            //variables load/store
+            OPCODE_ipush = 1, //pop next offset as address, and push integer value from stack by that address
+            OPCODE_fpush = 2, //pop next offset as address, and push float value from stack by that address
+            OPCODE_spush = 3, //pop next offset as address, and push string value from stack by that address
+            OPCODE_istore = 4, //pop the integer value from the top of stack; pop next offset and store to stacks's address by this offset
+            OPCODE_fstore = 5, //pop the float value from the top of stack; pop next offset and store to stacks's address by this offset
+            OPCODE_sstore = 6, //pop the string value from the top of stack; pop next offset and store to stacks's address by this offset
 
-            OPCODE_iadd = 0x6,
-            OPCODE_fadd = 0x7,
-            OPCODE_sadd = 0x8, //str + str
+            //constants load
+            OPCODE_iload_const = 7, //pop next offset, push integer value from integer constants pool
+            OPCODE_fload_const = 8, //pop next offset, push float value from integer constants pool
+            OPCODE_sload_const = 9, //pop next offset, push string value from integer constants pool
 
-            OPCODE_negate = 0x9, //-
+            //operations
+            OPCODE_iadd = 10,
+            OPCODE_fadd = 11,
+            OPCODE_sadd = 12, //str + str
 
-            OPCODE_isub = 0xa,
-            OPCODE_fsub = 0xb,
+            OPCODE_negate = 13, //-
 
-            OPCODE_imul = 0xc,
-            OPCODE_fmul = 0xd,
+            OPCODE_isub = 14,
+            OPCODE_fsub = 15,
 
-            OPCODE_idiv = 0xe,
-            OPCODE_fdiv = 0xf,
+            OPCODE_imul = 16,
+            OPCODE_fmul = 17,
 
-            OPCODE_or = 0x10,
-            OPCODE_xor = 0x11,
-            OPCODE_and = 0x12,
-            OPCODE_not = 0x13,
+            OPCODE_idiv = 18,
+            OPCODE_fdiv = 19,
 
-            OPCODE_eq = 0x14,
-            OPCODE_neq = 0x15,
-            OPCODE_leq = 0x16,//<=
-            OPCODE_geq = 0x17, //>=
-            OPCODE_greater = 0x18,
-            OPCODE_less = 0x19,
+            OPCODE_xor = 20,
 
-            OPCODE_call = 0x1a,
+            OPCODE_ifeq = 21,
+            OPCODE_ifneq = 22,
+            OPCODE_ifleq = 23,//<=
+            OPCODE_ifgeq = 24, //>=
+            OPCODE_ifgreater = 25,
+            OPCODE_ifless = 26,
 
-            OPCODE_b2str = 0x1b,
-            OPCODE_b2f = 0x1b,
-            OPCODE_f2i = 0x1c,
-            OPCODE_i2str = 0x1d,
-            OPCODE_i2f = 0x1e,
+            OPCODE_call = 27,
 
-            OPCODE_true = 0x1f, //push 1 on top of stack
-            OPCODE_false = 0x20,//push 0 on top of stack
+            OPCODE_b2str = 28,
+            OPCODE_b2f = 29,
+            OPCODE_f2i = 30,
+            OPCODE_i2str = 31,
+            OPCODE_i2f = 32,
 
-            OPCODE_ftable_value = 0x21, //pop next offset, and push value from float table with that index
-            OPCODE_itable_value = 0x22, //...
-            OPCODE_stable_value = 0x23, //...
+            OPCODE_true = 33, //push 1 on top of stack
+            OPCODE_false = 34,//push 0 on top of stack
+
+            OPCODE_jz = 35, /*jump if false*/
+            OPCODE_jnz = 36, /*jump if true*/
+            OPCODE_jmp = 37, /*unconditional goto */
 
             //TODO: add other opcodes
         };

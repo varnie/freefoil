@@ -40,7 +40,7 @@ namespace Freefoil {
     //TODO: optimize
     int tree_analyzer::find_assignable_function(const std::string &call_name, const std::vector<value_descriptor::E_VALUE_TYPE> &invoke_args, const function_shared_ptr_list_t &funcs) const {
 
-        const std::size_t invoke_args_count = invoke_args.size();
+        int invoke_args_count = invoke_args.size();
 
         function_shared_ptr_list_t candidates_funcs;
         std::remove_copy_if(funcs.begin(),
@@ -57,8 +57,8 @@ namespace Freefoil {
             const function_shared_ptr_t tested_func = candidates_funcs[i];
 
             assert(invoke_args_count == tested_func->get_param_descriptors_count());
-            const param_descriptors_shared_ptr_list_t params_list = tested_func->get_param_descriptors();
-            for (std::size_t j = 0; j < invoke_args_count; ++j) {
+            const param_descriptors_shared_ptr_list_t &params_list = tested_func->get_param_descriptors();
+            for (int j = 0; j < invoke_args_count; ++j) {
                 if (!is_assignable(params_list[j]->get_value_type(), invoke_args[j])) {
                     continue;
                 }
@@ -126,7 +126,7 @@ namespace Freefoil {
                        iter_end,
                        boost::bind(&function_has_no_body_functor, _1));
             if (iter != iter_end) {
-                print_error("function " + (*(*iter)).get_name() + " is not implemented");
+                print_error("function " + (*iter)->get_name() + " is not implemented");
                 ++errors_count_;
 
                 ++iter;
@@ -730,7 +730,8 @@ namespace Freefoil {
             invoked_value_types.push_back(cur_iter->value.value().get_value_type());
         }
 
-        if (int result = find_assignable_function(func_name, invoked_value_types, funcs_list_) != -1) {
+        int result = find_assignable_function(func_name, invoked_value_types, funcs_list_);
+        if (result != -1) {
             create_attributes(iter, funcs_list_[result]->get_type(), result);
         } else {
             if ((result = find_assignable_function(func_name, invoked_value_types, core_funcs_list_)) != -1) {
@@ -805,12 +806,12 @@ namespace Freefoil {
         const std::string number_as_str(parse_str(iter));
         if (number_as_str.find('.') != std::string::npos) {
             //it is float value
-            const std::size_t index = curr_parsing_function_->add_float_constant(boost::lexical_cast<float>(number_as_str));
-            create_attributes(iter, value_descriptor::floatType, (int) index);
+            const int index = curr_parsing_function_->add_float_constant(boost::lexical_cast<float>(number_as_str));
+            create_attributes(iter, value_descriptor::floatType, index);
         } else {
             //it is int value
-            const std::size_t index = curr_parsing_function_->add_int_constant(boost::lexical_cast<int>(number_as_str));
-            create_attributes(iter, value_descriptor::intType, (int) index);
+            const int index = curr_parsing_function_->add_int_constant(boost::lexical_cast<int>(number_as_str));
+            create_attributes(iter, value_descriptor::intType, index);
         }
     }
 
@@ -820,7 +821,7 @@ namespace Freefoil {
         const std::string quoted_string(parse_str(iter));
         const std::string str_value_without_quotes(quoted_string.begin() + 1, quoted_string.end() - 1);
 
-        const std::size_t index = curr_parsing_function_->add_string_constant(str_value_without_quotes);
+        const int index = curr_parsing_function_->add_string_constant(str_value_without_quotes);
         create_attributes(iter, value_descriptor::stringType, (int) index);
     }
 
@@ -876,8 +877,11 @@ namespace Freefoil {
         if (value_type1 == value_descriptor::stringType and
                 (value_type2 == value_descriptor::intType or value_type2 == value_descriptor::boolType)) {
             return value_descriptor::stringType;
-        }
+        }/*
         if (value_type1 == value_descriptor::intType and value_type2 == value_descriptor::floatType) {
+            return value_descriptor::floatType;
+        }*/
+        if (value_type1 == value_descriptor::floatType and value_type2 == value_descriptor::intType) {
             return value_descriptor::floatType;
         }
         if (value_type1 == value_descriptor::intType and value_type2 == value_descriptor::boolType) {
@@ -913,7 +917,7 @@ namespace Freefoil {
     str   <-- int
     float <-  int
     str   <-- bool
-    int   <-- float
+
     int   <-- bool
     float <-- bool
     */

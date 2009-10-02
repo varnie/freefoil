@@ -1,21 +1,25 @@
 #ifndef FREEFOIL_DEFS_H_
 #define FREEFOIL_DEFS_H_
 
+#include "value_descriptor.h"
+
 #include <string>
+#include <list>
 #include <boost/spirit/include/classic_ast.hpp>
 #include <boost/spirit/include/classic_position_iterator.hpp>
-
-#include "value_descriptor.h"
 
 namespace Freefoil {
     namespace Private {
 
+        using boost::scoped_ptr;
+        using std::list;
+
         class node_attributes {
             value_descriptor::E_VALUE_TYPE value_type_;
-            int index_;
             value_descriptor::E_VALUE_TYPE cast_type_;
+            int index_;
         public:
-            node_attributes():value_type_(value_descriptor::undefinedType), index_(-1), cast_type_(value_descriptor::undefinedType) {}
+            node_attributes():value_type_(value_descriptor::undefinedType), cast_type_(value_descriptor::undefinedType), index_(-1) {}
 
             void set_value_type(const value_descriptor::E_VALUE_TYPE value_type) {
                 value_type_ = value_type;

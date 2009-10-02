@@ -3,15 +3,18 @@
 #include "freefoil_grammar.h"
 #include "value_descriptor.h"
 
+#include <map>
 #include <iostream>
 
 namespace Freefoil {
 
     using namespace Private;
 
-    value_descriptor::E_VALUE_TYPE get_cast(const iter_t &iter);
+    value_descriptor::E_VALUE_TYPE get_cast(const iter_t &iter) {
+        return iter->value.value().get_cast();
+    }
 
-    codegen::codegen():funcs_count_(0) {
+    codegen::codegen() {
     }
 
     void codegen::exec(const iter_t &tree_top, const function_shared_ptr_list_t &parsed_funcs) {
@@ -52,13 +55,41 @@ namespace Freefoil {
 
         assert(iter->value.id() == freefoil_grammar::func_impl_ID);
 
-        funcs_bytecodes_.push_back(function_descriptor::bytecode_stream_t());
-        std::cout << "user function #" << funcs_count_ << " bytecode: ";
-        codegen_func_body(iter->children.begin() + 1);
-        std::cout << std::endl;
-        parsed_funcs_[funcs_count_]->set_bytecode_stream(funcs_bytecodes_[funcs_count_]);
+        bytecode_streams_.push_back(bytecode_stream_t());
 
-        ++funcs_count_;
+        codegen_func_body(iter->children.begin() + 1);
+
+        typedef std::multimap<code_chunk_shared_ptr_t, code_chunk_shared_ptr_t> code_chunk2code_chunk_map_t;
+        code_chunk2code_chunk_map_t dst2srcmap;
+
+        int instruction_index = 0;
+        for (bytecode_stream_t::iterator code_chunk_begin_iter = bytecode_streams_.back().begin(), code_chunk_iter_end = bytecode_streams_.back().end(), curr_code_chunk_iter = code_chunk_begin_iter;
+                curr_code_chunk_iter != code_chunk_iter_end; ++curr_code_chunk_iter) {
+
+            code_chunk_shared_ptr_t curr_code_chunk = *curr_code_chunk_iter;
+
+            if (!curr_code_chunk->is_plug_) {
+                std::pair<code_chunk2code_chunk_map_t::iterator, code_chunk2code_chunk_map_t::iterator> itp = dst2srcmap.equal_range(curr_code_chunk);
+                for (std::multimap<code_chunk_shared_ptr_t, code_chunk_shared_ptr_t>::iterator it = itp.first; it != itp.second; ++it) {
+                    // result is in *it
+                    code_chunk_shared_ptr_t src_to_be_patched = it->second;
+                    src_to_be_patched->bytecode_ = instruction_index;
+                }
+            } else {
+                bytecode_stream_t::iterator iter = std::find(code_chunk_begin_iter, code_chunk_iter_end, curr_code_chunk->jump_dst_);
+                assert(iter != code_chunk_iter_end);
+
+                code_chunk_shared_ptr_t jump_dst =  *(++iter);
+                dst2srcmap.insert(std::make_pair<code_chunk_shared_ptr_t, code_chunk_shared_ptr_t>(jump_dst, curr_code_chunk));
+            }
+
+            ++instruction_index;
+        }
+
+        for (bytecode_stream_t::const_iterator curr_code_chunk_iter = bytecode_streams_.back().begin(), code_chunk_iter_end = bytecode_streams_.back().end();
+                curr_code_chunk_iter != code_chunk_iter_end; ++curr_code_chunk_iter) {
+            std::cout << (unsigned int) (*curr_code_chunk_iter)->bytecode_ << " ";
+        }
     }
 
     void codegen::codegen_func_body(const iter_t &iter) {
@@ -93,7 +124,6 @@ namespace Freefoil {
 
         assert(iter->value.id() == freefoil_grammar::var_declare_stmt_list_ID);
 
-        //
         for (iter_t cur_iter = iter->children.begin() + 1, iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter) {
 
             //codegen var declare tails
@@ -132,6 +162,9 @@ namespace Freefoil {
 
         assert(iter->value.id() == freefoil_grammar::bool_expr_ID);
 
+        true_jmps_.push(jumps_t());
+        false_jmps_.push(jumps_t());
+
         const parser_id id = iter->children.begin()->value.id();
         if (id == freefoil_grammar::bool_term_ID) {
             codegen_bool_term(iter->children.begin());
@@ -139,6 +172,9 @@ namespace Freefoil {
             assert(id == freefoil_grammar::or_xor_op_ID);
             codegen_or_xor_op(iter->children.begin());
         }
+
+        true_jmps_.pop();
+        false_jmps_.pop();
     }
 
     void codegen::codegen_bool_term(const iter_t &iter) {
@@ -241,10 +277,10 @@ namespace Freefoil {
         const std::string number_as_str(parse_str(iter));
         if (number_as_str.find('.') != std::string::npos) {
             //it is float value
-            code_emit(OPCODE_ftable_value, (int) iter->value.value().get_index());
+            code_emit(OPCODE_fload_const, iter->value.value().get_index());
         } else {
             //it is int value
-            code_emit(OPCODE_itable_value, (int) iter->value.value().get_index());
+            code_emit(OPCODE_iload_const, iter->value.value().get_index());
         }
     }
 
@@ -252,7 +288,7 @@ namespace Freefoil {
 
         assert(iter->value.id() == freefoil_grammar::quoted_string_ID);
 
-        code_emit(OPCODE_stable_value, iter->value.value().get_index());
+        code_emit(OPCODE_sload_const, iter->value.value().get_index());
     }
 
     void codegen::codegen_ident(const iter_t &iter) {
@@ -276,7 +312,7 @@ namespace Freefoil {
         assert(iter->value.id() == freefoil_grammar::func_call_ID);
         assert((iter->children.begin() + 1)->value.id() == freefoil_grammar::invoke_args_list_ID);
 
-        code_emit(OPCODE_call, (int) iter->value.value().get_index());
+        code_emit(OPCODE_call, iter->value.value().get_index());
 
         for (iter_t cur_iter = (iter->children.begin() + 1)->children.begin(), iter_end = (iter->children.begin() + 1)->children.end(); cur_iter != iter_end; ++cur_iter) {
 
@@ -306,7 +342,22 @@ namespace Freefoil {
         const bool negate = (parse_str(iter->children.begin()) == "not");
         codegen_bool_relation(negate ? iter->children.begin() + 1 : iter->children.begin());
         if (negate) {
-            code_emit(OPCODE_not);
+
+            true_jmps_.push(jumps_t());
+            false_jmps_.push(jumps_t());
+
+            code_emit_branch(OPCODE_jnz /*jump if true*/);
+            false_jmps_.top().push_back(bytecode_streams_.back().back());
+            code_emit(OPCODE_true);
+            code_emit_branch(OPCODE_jmp /*unconditional jump*/);
+            true_jmps_.top().push_back(bytecode_streams_.back().back());
+
+            set_jumps_dsts(false_jmps_.top(), bytecode_streams_.back().back());
+            code_emit(OPCODE_false);
+            set_jumps_dsts(true_jmps_.top(), bytecode_streams_.back().back());
+
+            true_jmps_.pop();
+            false_jmps_.pop();
         }
     }
 
@@ -329,18 +380,32 @@ namespace Freefoil {
             code_emit_cast(left_value_type, cast_type);
         }
 
-        codegen_bool_term(right_iter);
-
-        cast_type = get_cast(right_iter);
-        if (cast_type != value_descriptor::undefinedType) {
-            value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
-            code_emit_cast(right_value_type, cast_type);
-        }
-
         if (parse_str(iter) == "or") {
-            code_emit(OPCODE_or);
+
+            code_emit_branch(OPCODE_jnz /*jump if true*/);
+            true_jmps_.top().push_back(bytecode_streams_.back().back());
+
+            codegen_bool_term(right_iter);
+
+
+            cast_type = get_cast(right_iter);
+            if (cast_type != value_descriptor::undefinedType) {
+                value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
+                code_emit_cast(right_value_type, cast_type);
+            }
+
+            set_jumps_dsts(true_jmps_.top(), bytecode_streams_.back().back());
         } else {
             assert(parse_str(iter) == "xor");
+
+            codegen_bool_term(right_iter);
+
+            cast_type = get_cast(right_iter);
+            if (cast_type != value_descriptor::undefinedType) {
+                value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
+                code_emit_cast(right_value_type, cast_type);
+            }
+
             code_emit(OPCODE_xor);
         }
     }
@@ -360,19 +425,22 @@ namespace Freefoil {
 
         value_descriptor::E_VALUE_TYPE cast_type = get_cast(left_iter);
         if (cast_type != value_descriptor::undefinedType) {
-        value_descriptor::E_VALUE_TYPE left_value_type = left_iter->value.value().get_value_type();
+            value_descriptor::E_VALUE_TYPE left_value_type = left_iter->value.value().get_value_type();
             code_emit_cast(left_value_type, cast_type);
         }
+
+        code_emit_branch(OPCODE_jz /*jump if false*/);
+        false_jmps_.top().push_back(bytecode_streams_.back().back());
 
         codegen_bool_factor(right_iter);
 
         cast_type = get_cast(right_iter);
         if (cast_type != value_descriptor::undefinedType) {
-        value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
+            value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
             code_emit_cast(right_value_type, cast_type);
         }
 
-        code_emit(OPCODE_and);
+        set_jumps_dsts(false_jmps_.top(), bytecode_streams_.back().back());
     }
 
     void codegen::codegen_plus_minus_op(const iter_t &iter) {
@@ -480,6 +548,9 @@ namespace Freefoil {
 
         assert(iter->value.id() == freefoil_grammar::cmp_op_ID);
 
+        true_jmps_.push(jumps_t());
+        false_jmps_.push(jumps_t());
+
         iter_t left_iter = iter->children.begin();
         iter_t right_iter = left_iter + 1;
 
@@ -505,32 +576,86 @@ namespace Freefoil {
 
         const std::string cmp_operation_as_str(parse_str(iter));
         if (cmp_operation_as_str == "==") {
-            code_emit(OPCODE_eq);
+            code_emit_branch(OPCODE_ifeq);
         } else if (cmp_operation_as_str == "!=") {
-            code_emit(OPCODE_neq);
+            code_emit_branch(OPCODE_ifneq);
         } else if (cmp_operation_as_str == "<=") {
-            code_emit(OPCODE_leq);
+            code_emit_branch(OPCODE_ifleq);
         } else if (cmp_operation_as_str == ">=") {
-            code_emit(OPCODE_geq);
+            code_emit_branch(OPCODE_ifgeq);
         } else if (cmp_operation_as_str == "<") {
-            code_emit(OPCODE_less);
+            code_emit_branch(OPCODE_ifless);
         } else {
             assert(cmp_operation_as_str == ">");
-            code_emit(OPCODE_greater);
+            code_emit_branch(OPCODE_ifgreater);
         }
+
+        true_jmps_.top().push_back(bytecode_streams_.back().back());
+        code_emit(OPCODE_false);
+        code_emit_branch(OPCODE_jmp);
+        false_jmps_.top().push_back(bytecode_streams_.back().back());
+
+        set_jumps_dsts(true_jmps_.top(), bytecode_streams_.back().back());
+        code_emit(OPCODE_true);
+        set_jumps_dsts(false_jmps_.top(), bytecode_streams_.back().back());
+
+        true_jmps_.pop();
+        false_jmps_.pop();
+
     }
 
-    void codegen::code_emit(OPCODE_KIND opcode) {
+    void codegen::code_emit(function_descriptor::BYTECODE opcode) {
 
-        funcs_bytecodes_[funcs_count_].push_back(opcode);
-        std::cout << opcode << " ";
+        code_chunk_shared_ptr_t pnew_code_chunk(new code_chunk_t);
+        pnew_code_chunk->bytecode_ = opcode;
+        pnew_code_chunk->is_plug_ = false;
+
+        /*if (pcurr_code_chunk_ != NULL){
+            pnew_code_chunk->pprev_ = pcurr_code_chunk_;
+            pcurr_code_chunk_->pnext_ = pnew_code_chunk;
+        }
+        pcurr_code_chunk_ = pnew_code_chunk;*/
+
+        bytecode_streams_.back().push_back(pnew_code_chunk);
+
+        // std::cout << opcode << " "; //for debug only
     }
 
-    void codegen::code_emit(OPCODE_KIND opcode, std::size_t index) {
+    void codegen::code_emit(function_descriptor::BYTECODE opcode, std::size_t index) {
 
         code_emit(opcode);
-        funcs_bytecodes_[funcs_count_].push_back(index);
-        std::cout << "(" << index << ") ";
+        code_emit(index);
+
+        //  std::cout << "(" << index << ") "; //for debug only
+    }
+
+    void codegen::code_emit_plug() {
+
+        code_chunk_shared_ptr_t pnew_code_chunk(new code_chunk_t);
+        pnew_code_chunk->is_plug_ = true;
+        /*
+                pnew_code_chunk->pprev_ = pcurr_code_chunk_;
+                pnew_code_chunk->pnext_;
+
+                pcurr_code_chunk_->pnext_ = pnew_code_chunk;
+                pcurr_code_chunk_ = pnew_code_chunk;*/
+
+        bytecode_streams_.back().push_back(pnew_code_chunk);
+    }
+
+    void codegen::code_emit_branch(function_descriptor::BYTECODE opcode) {
+
+        code_emit(opcode);
+        code_emit_plug(); //to be backpatched
+    }
+
+    void codegen::set_jumps_dsts(vector<code_chunk_shared_ptr_t> &jmps_table, const code_chunk_shared_ptr_t &dst_code_chunk) {
+
+        for (vector<code_chunk_shared_ptr_t>::iterator cur_iter = jmps_table.begin(), iter_end = jmps_table.end(); cur_iter != iter_end; ++cur_iter) {
+            code_chunk_shared_ptr_t code_chunk = *cur_iter;
+            assert(code_chunk->is_plug_ == true);
+            code_chunk->jump_dst_ = dst_code_chunk;
+        }
     }
 
     void codegen::code_emit_cast(value_descriptor::E_VALUE_TYPE src_type, value_descriptor::E_VALUE_TYPE cast_type) {
@@ -559,7 +684,7 @@ namespace Freefoil {
         } else if (src_type == value_descriptor::stringType) {
             assert(false);
         } else if (src_type == value_descriptor::floatType) {
-            assert(cast_type == value_descriptor::floatType);
+            assert(cast_type == value_descriptor::intType);
             if (cast_type == value_descriptor::intType) {
                 code_emit(OPCODE_f2i);
             } else {
@@ -574,9 +699,5 @@ namespace Freefoil {
                 code_emit(OPCODE_i2str);
             }
         }
-    }
-
-    value_descriptor::E_VALUE_TYPE get_cast(const iter_t &iter) {
-        return iter->value.value().get_cast();
     }
 }

@@ -1,12 +1,9 @@
-#include "script.h"
+#include "compiler.h"
 #include "freefoil_grammar.h"
 #include "AST_defs.h"
 #include "tree_analyzer.h"
 #include "codegen.h"
-#include "writer.h"
-#include "freefoil_vm.h"
 
-#include <iostream>
 #if defined(BOOST_SPIRIT_DUMP_PARSETREE_AS_XML)
 #include <boost/spirit/include/classic_tree_to_xml.hpp>
 #include <map>
@@ -21,7 +18,7 @@ namespace Freefoil {
     }
 
 #if defined(BOOST_SPIRIT_DUMP_PARSETREE_AS_XML)
-    void script::dump_tree(const tree_parse_info_t &info) const {
+    void compiler::dump_tree(const tree_parse_info_t &info) const {
         // dump parse tree as XML
         std::map<parser_id, std::string> rule_names;
         rule_names[freefoil_grammar::script_ID] = "script";
@@ -66,27 +63,19 @@ namespace Freefoil {
     }
 #endif
 
-    void script::exec() {
+    void compiler::exec(const string &source) {
 
-        std::string str;
 
-        while (getline(std::cin, str)) {
-            if (str == "q") {
-                break;
-            }
 
-            if (parse(str, the_parse_info)){
-                if (the_tree_analyzer.parse(the_parse_info.trees.begin())) {
-                    the_codegen.exec(the_parse_info.trees.begin(), the_tree_analyzer.get_parsed_funcs_list());
-                    //the_writer.write(the_tree_analyzer.get_parsed_funcs_list(), "output.ffl");
-                    freefoil_vm the_freefoil_vm;
-                    the_freefoil_vm.exec(the_tree_analyzer.get_parsed_funcs_list());
-                }
+        if (parse(source, the_parse_info)) {
+            if (the_tree_analyzer.parse(the_parse_info.trees.begin())) {
+                the_codegen.exec(the_parse_info.trees.begin(), the_tree_analyzer.get_parsed_funcs_list());
+                //TODO:
             }
         }
     }
 
-    bool script::parse(const std::string &program_source, tree_parse_info_t &result_info) {
+    bool compiler::parse(const std::string &program_source, tree_parse_info_t &result_info) {
 
         bool is_success;
 
@@ -155,6 +144,6 @@ namespace Freefoil {
         return is_success;
     }
 
-    script::script() {
+    compiler::compiler() {
     }
 }

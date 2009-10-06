@@ -5,6 +5,7 @@
 #include "function_descriptor.h"
 #include "symbols_handler.h"
 #include "value_descriptor.h"
+#include "runtime.h"
 
 #include <boost/scoped_ptr.hpp>
 
@@ -19,6 +20,7 @@ namespace Freefoil {
     using Private::OPCODE_KIND;
     using Private::symbols_handler;
     using Private::value_descriptor;
+    using Runtime::constants_pool;
     using boost::scoped_ptr;
 
     namespace Private {
@@ -34,6 +36,8 @@ namespace Freefoil {
             symbols_handler_scoped_ptr symbols_handler_;
             function_shared_ptr_t curr_parsing_function_;
             int stack_offset_;
+
+            constants_pool constants_pool_;
 
             void setup_core_funcs();
 

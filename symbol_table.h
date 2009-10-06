@@ -3,9 +3,10 @@
 
 #include <string>
 #include <vector>
+#include "value_descriptor.h"
+
 #include <boost/shared_ptr.hpp>
 #include <boost/scoped_ptr.hpp>
-#include "value_descriptor.h"
 
 namespace Freefoil {
     namespace Private {

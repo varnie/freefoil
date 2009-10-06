@@ -118,20 +118,19 @@ namespace Freefoil {
         }
 
         //now we have all user-defined function heads parsed
-        function_shared_ptr_list_t::iterator iter = funcs_list_.begin();
-        function_shared_ptr_list_t::iterator iter_end = funcs_list_.end();
+        function_shared_ptr_list_t::iterator cur_iter = funcs_list_.begin(), iter_end = funcs_list_.end();
         do {
-            iter = std::find_if(
-                       iter,
+            cur_iter = std::find_if(
+                       cur_iter,
                        iter_end,
                        boost::bind(&function_has_no_body_functor, _1));
-            if (iter != iter_end) {
-                print_error("function " + (*iter)->get_name() + " is not implemented");
+            if (cur_iter != iter_end) {
+                print_error("function " + (*cur_iter)->get_name() + " is not implemented");
                 ++errors_count_;
 
-                ++iter;
+                ++cur_iter;
             }
-        } while (iter != iter_end);
+        } while (cur_iter != iter_end);
 
         //entry point ("main" function) must be declared
         if (std::find_if(
@@ -367,7 +366,7 @@ namespace Freefoil {
                     print_error(cur_iter->children.begin()->children.begin(), "redeclaration of variable " + var_name);
                     ++errors_count_;
                 }
-                create_attributes(cur_iter->children.begin()->children.begin(), var_type);
+
                 create_attributes(cur_iter->children.begin()->children.begin(), var_type, stack_offset_);
 
                 if (cur_iter->children.begin()->children.begin() + 1 != cur_iter->children.begin()->children.end()) {
@@ -806,11 +805,11 @@ namespace Freefoil {
         const std::string number_as_str(parse_str(iter));
         if (number_as_str.find('.') != std::string::npos) {
             //it is float value
-            const int index = curr_parsing_function_->add_float_constant(boost::lexical_cast<float>(number_as_str));
+            const int index = constants_pool_.add_float_constant(boost::lexical_cast<float>(number_as_str));
             create_attributes(iter, value_descriptor::floatType, index);
         } else {
             //it is int value
-            const int index = curr_parsing_function_->add_int_constant(boost::lexical_cast<int>(number_as_str));
+            const int index = constants_pool_.add_int_constant(boost::lexical_cast<int>(number_as_str));
             create_attributes(iter, value_descriptor::intType, index);
         }
     }
@@ -821,7 +820,7 @@ namespace Freefoil {
         const std::string quoted_string(parse_str(iter));
         const std::string str_value_without_quotes(quoted_string.begin() + 1, quoted_string.end() - 1);
 
-        const int index = curr_parsing_function_->add_string_constant(str_value_without_quotes);
+        const int index = constants_pool_.add_string_constant(str_value_without_quotes);
         create_attributes(iter, value_descriptor::stringType, (int) index);
     }
 

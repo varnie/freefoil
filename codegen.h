@@ -24,21 +24,22 @@ namespace Freefoil {
 
         class codegen {
         private:
+
             class code_chunk;
             typedef shared_ptr<code_chunk> code_chunk_shared_ptr_t;
 
             typedef struct code_chunk {
                 function_descriptor::BYTECODE bytecode_;
                 bool is_plug_;  //to be patched later
-                code_chunk_shared_ptr_t jump_dst_; //if is_plug_ == true, then we must patch our bytecode_ with the address of jump_dst_->pnext_ instruction
+                code_chunk_shared_ptr_t jump_dst_; //if is_plug_ == true, then we must patch our bytecode_ with the address of an instruction following after the jump_dst_
             } code_chunk_t;
 
             typedef vector<code_chunk_shared_ptr_t> jumps_t;
             stack<jumps_t> true_jmps_, false_jmps_;
 
-            typedef list<code_chunk_shared_ptr_t> bytecode_stream_t;
-            typedef vector<bytecode_stream_t> bytecode_streams_t;
-            bytecode_streams_t bytecode_streams_;
+            typedef list<code_chunk_shared_ptr_t> code_chunk_list_t;
+            typedef vector<code_chunk_list_t> code_chunks_t;
+            code_chunks_t code_chunks_;
 
             function_shared_ptr_list_t parsed_funcs_;
 

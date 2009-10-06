@@ -2,7 +2,6 @@
 #define SYMBOLS_HANDLER_H_INCLUDED
 
 #include "symbol_table.h"
-#include "exceptions.h"
 #include <deque>
 
 #include <boost/scoped_ptr.hpp>
@@ -51,7 +50,6 @@ namespace Freefoil {
 
                 const std::size_t bucket_index = symbol_table_->insert(the_name, the_value_descriptor);
                 if (std::find(last_entry_start_iter_, scopes_.end(), bucket_index) != scopes_.end()) {
-                    //throw freefoil_exception("redeclaration of variable " + the_name);
                     return false;
                 }
                 scopes_.push_back(bucket_index);

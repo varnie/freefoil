@@ -4,7 +4,7 @@
 #include "value_descriptor.h"
 
 #include <string>
-#include <list>
+
 #include <boost/spirit/include/classic_ast.hpp>
 #include <boost/spirit/include/classic_position_iterator.hpp>
 
@@ -12,7 +12,6 @@ namespace Freefoil {
     namespace Private {
 
         using boost::scoped_ptr;
-        using std::list;
 
         class node_attributes {
             value_descriptor::E_VALUE_TYPE value_type_;

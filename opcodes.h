@@ -59,6 +59,8 @@ namespace Freefoil {
             OPCODE_jnz = 36, /*jump if true*/
             OPCODE_jmp = 37, /*unconditional goto */
 
+            OPCODE_halt = 38,  //exit
+            OPCODE_ret = 39,
             //TODO: add other opcodes
         };
     }

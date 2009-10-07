@@ -76,6 +76,7 @@ namespace Freefoil {
                 ("and")
                 ("not")
                 ("xor")
+                ("return")
                 ;
             }
         };
@@ -122,6 +123,7 @@ namespace Freefoil {
                 mult_divide_op_ID,
                 or_xor_op_ID,
                 unary_plus_minus_op_ID,
+                return_stmt_ID,
             };
 
             template <typename ScannerT>
@@ -230,11 +232,14 @@ namespace Freefoil {
 
                     number = token_node_d[longest_d[uint_p | real_p]];
 
+                    return_stmt = no_node_d[keyword_p("return")] >> !gen_pt_node_d[bool_expr] >> no_node_d[stmt_end];
+
                     stmt =
                         stmt_end |
                         var_declare_stmt_list |
                         func_call >> no_node_d[stmt_end] |
-                        gen_pt_node_d[block]
+                        gen_pt_node_d[block] |
+                        gen_pt_node_d[return_stmt]
                          //TODO: add other alternatives
                         ;
 
@@ -281,6 +286,7 @@ namespace Freefoil {
                 GRAMMAR_RULE(mult_divide_op_ID) mult_divide_op;
                 GRAMMAR_RULE(or_xor_op_ID) or_xor_op;
                 GRAMMAR_RULE(unary_plus_minus_op_ID) unary_plus_minus_op;
+                GRAMMAR_RULE(return_stmt_ID) return_stmt;
             };
         };
     }

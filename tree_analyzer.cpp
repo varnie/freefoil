@@ -2,6 +2,7 @@
 #include "freefoil_grammar.h"
 #include "AST_defs.h"
 #include "defs.h"
+#include "runtime.h"
 
 #include <iostream>
 #include <list>
@@ -38,7 +39,7 @@ namespace Freefoil {
     }
 
     //TODO: optimize
-    int tree_analyzer::find_assignable_function(const std::string &call_name, const std::vector<value_descriptor::E_VALUE_TYPE> &invoke_args, const function_shared_ptr_list_t &funcs) const {
+    int tree_analyzer::find_function(const std::string &call_name, const std::vector<value_descriptor::E_VALUE_TYPE> &invoke_args, const function_shared_ptr_list_t &funcs) const {
 
         int invoke_args_count = invoke_args.size();
 
@@ -121,9 +122,9 @@ namespace Freefoil {
         function_shared_ptr_list_t::iterator cur_iter = funcs_list_.begin(), iter_end = funcs_list_.end();
         do {
             cur_iter = std::find_if(
-                       cur_iter,
-                       iter_end,
-                       boost::bind(&function_has_no_body_functor, _1));
+                           cur_iter,
+                           iter_end,
+                           boost::bind(&function_has_no_body_functor, _1));
             if (cur_iter != iter_end) {
                 print_error("function " + (*cur_iter)->get_name() + " is not implemented");
                 ++errors_count_;
@@ -144,7 +145,7 @@ namespace Freefoil {
         //TODO: add check that each func impl has "return stmt" in all "key points"
         //and other checks
 
-        if (funcs_list_.size() > Private::max_byte_value) {
+        if (funcs_list_.size() > Runtime::max_byte_value) {
             print_error("user functions limit exceeded");
             ++errors_count_;
         }
@@ -285,7 +286,7 @@ namespace Freefoil {
             }
         }
         assert(cur_iter == iter_end);
-        return param_descriptor_shared_ptr_t(new param_descriptor(val_type, stack_offset_++, val_name, is_ref));
+        return param_descriptor_shared_ptr_t(new param_descriptor(val_type, ++stack_offset_, val_name, is_ref));
     }
 
     param_descriptors_shared_ptr_list_t tree_analyzer::parse_func_param_descriptors_list(const iter_t &iter) {
@@ -323,7 +324,14 @@ namespace Freefoil {
             func_type = value_descriptor::boolType;
         }
 
-        const function_shared_ptr_t parsed_func = function_shared_ptr_t(new function_descriptor(parse_str(iter->children.begin()+1), func_type, parse_func_param_descriptors_list(iter->children.begin()+2)));
+        param_descriptors_shared_ptr_list_t param_descriptors_list = parse_func_param_descriptors_list(iter->children.begin()+2);
+
+        if (param_descriptors_list.size() > Runtime::max_byte_value) {
+            print_error(iter->children.begin()+2, "function params limit exceeded");
+            ++errors_count_;
+        }
+
+        const function_shared_ptr_t parsed_func = function_shared_ptr_t(new function_descriptor(parse_str(iter->children.begin()+1), func_type, param_descriptors_list));
 
         if (std::find_if(
                     core_funcs_list_.begin(),
@@ -360,11 +368,19 @@ namespace Freefoil {
             assert(cur_iter->value.id() == freefoil_grammar::var_declare_tail_ID);
             if (cur_iter->children.begin()->value.id() == freefoil_grammar::assign_op_ID) {
                 assert(cur_iter->children.begin()->children.begin()->value.id() == freefoil_grammar::ident_ID);
+
                 const std::string var_name(parse_str(cur_iter->children.begin()->children.begin()));
 
                 if (!symbols_handler_->insert(var_name, value_descriptor(var_type, stack_offset_))) {
                     print_error(cur_iter->children.begin()->children.begin(), "redeclaration of variable " + var_name);
                     ++errors_count_;
+                }
+
+                if (curr_parsing_function_->get_local_vars_count() >= Runtime::max_byte_value) {
+                    print_error(cur_iter->children.begin()->children.begin(), "local variables limit exceeded");
+                    ++errors_count_;
+                } else {
+                    curr_parsing_function_->inc_local_vars_count();
                 }
 
                 create_attributes(cur_iter->children.begin()->children.begin(), var_type, stack_offset_);
@@ -388,6 +404,14 @@ namespace Freefoil {
                 ++stack_offset_;
             } else {
                 assert(cur_iter->children.begin()->value.id() == freefoil_grammar::ident_ID);
+
+                if (curr_parsing_function_->get_local_vars_count() >= Runtime::max_byte_value) {
+                    print_error(cur_iter->children.begin()->children.begin(), "local variables limit exceeded");
+                    ++errors_count_;
+                } else {
+                    curr_parsing_function_->inc_local_vars_count();
+                }
+
                 const std::string var_name(parse_str(cur_iter->children.begin()));
                 symbols_handler_->insert(var_name, value_descriptor(var_type, stack_offset_));
                 create_attributes(cur_iter->children.begin(), var_type);
@@ -411,13 +435,43 @@ namespace Freefoil {
             parse_var_declare_stmt_list(iter);
             break;
         }
-
-        case freefoil_grammar::stmt_end_ID:
+        case freefoil_grammar::return_stmt_ID: {
+            parse_return_stmt(iter);
             break;
+            case freefoil_grammar::stmt_end_ID:
+                break;
+                //TODO: check for other stmts
+            default:
+                break;
+            }
+        }
+    }
 
-            //TODO: check for other stmts
-        default:
-            break;
+    void tree_analyzer::parse_return_stmt(const iter_t &iter) {
+
+        assert(iter->value.id() == freefoil_grammar::return_stmt_ID);
+
+        assert(iter->children.empty() or iter->children.size() == 1);
+
+        value_descriptor::E_VALUE_TYPE func_type = curr_parsing_function_->get_type();
+
+        if (iter->children.empty()){
+            if (func_type != value_descriptor::voidType){
+                print_error(iter, "unable to return value from void function");
+                ++errors_count_;
+            }else{
+                create_attributes(iter, func_type);
+            }
+        }else{
+            if (func_type != value_descriptor::voidType){
+                assert(iter->children.size() == 1);
+                assert(iter->children.begin()->value.id() == freefoil_grammar::bool_expr_ID);
+                parse_bool_expr(iter->children.begin());
+                create_attributes(iter, iter->children.begin()->value.value().get_value_type());
+            }else{
+                print_error(iter, "unable to return value from void function");
+                ++errors_count_;
+            }
         }
     }
 
@@ -729,11 +783,11 @@ namespace Freefoil {
             invoked_value_types.push_back(cur_iter->value.value().get_value_type());
         }
 
-        int result = find_assignable_function(func_name, invoked_value_types, funcs_list_);
+        int result = find_function(func_name, invoked_value_types, funcs_list_);
         if (result != -1) {
             create_attributes(iter, funcs_list_[result]->get_type(), result);
         } else {
-            if ((result = find_assignable_function(func_name, invoked_value_types, core_funcs_list_)) != -1) {
+            if ((result = find_function(func_name, invoked_value_types, core_funcs_list_)) != -1) {
                 create_attributes(iter, core_funcs_list_[result]->get_type(), result);
             } else {
                 print_error(iter, "unable to call function " + func_name);

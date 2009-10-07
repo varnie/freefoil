@@ -2,6 +2,7 @@
 #include "AST_defs.h"
 #include "freefoil_grammar.h"
 #include "value_descriptor.h"
+#include "opcodes.h"
 
 #include <map>
 #include <iostream>
@@ -312,14 +313,12 @@ namespace Freefoil {
         assert(iter->value.id() == freefoil_grammar::func_call_ID);
         assert((iter->children.begin() + 1)->value.id() == freefoil_grammar::invoke_args_list_ID);
 
-        code_emit(OPCODE_call, iter->value.value().get_index());
-
-        for (iter_t cur_iter = (iter->children.begin() + 1)->children.begin(), iter_end = (iter->children.begin() + 1)->children.end(); cur_iter != iter_end; ++cur_iter) {
-
+        for (iter_t cur_iter = (iter->children.begin() + 1)->children.end() - 1, iter_end = (iter->children.begin() + 1)->children.begin(); cur_iter >= iter_end; --cur_iter){
             assert(cur_iter->value.id() == freefoil_grammar::bool_expr_ID);
             codegen_bool_expr(cur_iter);
         }
 
+        code_emit(OPCODE_call, iter->value.value().get_index());
         //TODO: make distinguish between core and user functions calls
     }
 
@@ -604,46 +603,30 @@ namespace Freefoil {
 
     }
 
-    void codegen::code_emit(function_descriptor::BYTECODE opcode) {
+    void codegen::code_emit(Runtime::BYTE opcode) {
 
         code_chunk_shared_ptr_t pnew_code_chunk(new code_chunk_t);
         pnew_code_chunk->bytecode_ = opcode;
         pnew_code_chunk->is_plug_ = false;
 
-        /*if (pcurr_code_chunk_ != NULL){
-            pnew_code_chunk->pprev_ = pcurr_code_chunk_;
-            pcurr_code_chunk_->pnext_ = pnew_code_chunk;
-        }
-        pcurr_code_chunk_ = pnew_code_chunk;*/
-
         code_chunks_.back().push_back(pnew_code_chunk);
-
-        // std::cout << opcode << " "; //for debug only
     }
 
-    void codegen::code_emit(function_descriptor::BYTECODE opcode, std::size_t index) {
+    void codegen::code_emit(Runtime::BYTE opcode, std::size_t index) {
 
         code_emit(opcode);
         code_emit(index);
-
-        //  std::cout << "(" << index << ") "; //for debug only
     }
 
     void codegen::code_emit_plug() {
 
         code_chunk_shared_ptr_t pnew_code_chunk(new code_chunk_t);
         pnew_code_chunk->is_plug_ = true;
-        /*
-                pnew_code_chunk->pprev_ = pcurr_code_chunk_;
-                pnew_code_chunk->pnext_;
-
-                pcurr_code_chunk_->pnext_ = pnew_code_chunk;
-                pcurr_code_chunk_ = pnew_code_chunk;*/
 
         code_chunks_.back().push_back(pnew_code_chunk);
     }
 
-    void codegen::code_emit_branch(function_descriptor::BYTECODE opcode) {
+    void codegen::code_emit_branch(Runtime::BYTE opcode) {
 
         code_emit(opcode);
         code_emit_plug(); //to be backpatched

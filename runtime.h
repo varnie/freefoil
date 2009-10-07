@@ -11,6 +11,9 @@ namespace Freefoil {
         using std::vector;
         using std::string;
 
+        typedef unsigned char BYTE;
+        static const BYTE max_byte_value =  std::numeric_limits<BYTE>::max();
+
         class constants_pool {
 
             typedef vector<int> int_table_t;
@@ -75,6 +78,17 @@ namespace Freefoil {
             const char *get_string_value_from_table(const std::size_t index) const {
                 return string_table_[index].c_str();
             }
+        };
+
+        class freefoil_vm;
+
+        class function_template{
+            friend class freefoil_vm;
+
+            BYTE args_count_;
+            BYTE locals_count_;
+            BYTE *pc_;
+            bool void_type; //marks whether the function returns void or not
         };
     }
 }

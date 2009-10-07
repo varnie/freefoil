@@ -5,14 +5,13 @@
 #include "value_descriptor.h"
 #include "param_descriptor.h"
 #include "opcodes.h"
+#include "runtime.h"
 
 #include <vector>
 #include <string>
 #include <iostream>
 
 #include <boost/shared_ptr.hpp>
-#include <boost/serialization/vector.hpp>
-
 
 namespace Freefoil {
     namespace Private {
@@ -22,13 +21,15 @@ namespace Freefoil {
         using boost::shared_ptr;
 
         class function_descriptor {
-            friend class boost::serialization::access;
+            string name_;
+            value_descriptor::E_VALUE_TYPE func_type_;
+            param_descriptors_shared_ptr_list_t param_descriptors_list_;
+            iter_t iter_body_;
+            bool has_body_;
+            Runtime::BYTE local_vars_count_;
         public:
-            typedef unsigned char BYTECODE;
-            typedef vector<BYTECODE> bytecode_stream_t;
-
             function_descriptor(const string &name, const value_descriptor::E_VALUE_TYPE func_type, const param_descriptors_shared_ptr_list_t &param_descriptors_list = param_descriptors_shared_ptr_list_t())
-                    :name_(name), func_type_(func_type), param_descriptors_list_(param_descriptors_list), has_body_(false) {
+                    :name_(name), func_type_(func_type), param_descriptors_list_(param_descriptors_list), has_body_(false), local_vars_count_(0) {
             }
 
             const std::string &get_name() const {
@@ -54,31 +55,19 @@ namespace Freefoil {
                 return iter_body_;
             }
 
-            int get_param_descriptors_count() const {
+            Runtime::BYTE get_param_descriptors_count() const {
                 return param_descriptors_list_.size();
             }
 
-            void set_bytecode_stream(const bytecode_stream_t &bytecode_stream) {
-                bytecode_stream_ = bytecode_stream;
+            void inc_local_vars_count(){
+                assert(local_vars_count_ < Runtime::max_byte_value);
+                ++local_vars_count_;
             }
 
-            const bytecode_stream_t &get_bytecode_stream() const {
-                return bytecode_stream_;
-            }
-        private:
-            template<class Archive>
-            void serialize(Archive & ar, const unsigned int version) {
-                ar & bytecode_stream_;
+            Runtime::BYTE get_local_vars_count() const{
+                return local_vars_count_;
             }
 
-        private:
-            string name_;
-            value_descriptor::E_VALUE_TYPE func_type_;
-            param_descriptors_shared_ptr_list_t param_descriptors_list_;
-            iter_t iter_body_;
-            bool has_body_;
-
-            bytecode_stream_t bytecode_stream_;
         };
 
         typedef shared_ptr<function_descriptor> function_shared_ptr_t;

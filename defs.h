@@ -3,7 +3,6 @@
 
 namespace Freefoil{
     namespace Private{
-        static const unsigned int max_byte_value =  std::numeric_limits<unsigned char>::max();
 
     }
 }

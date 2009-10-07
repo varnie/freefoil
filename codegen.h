@@ -3,7 +3,7 @@
 
 #include "AST_defs.h"
 #include "function_descriptor.h"
-#include "opcodes.h"
+#include "runtime.h"
 
 #include <list>
 #include <vector>
@@ -29,7 +29,7 @@ namespace Freefoil {
             typedef shared_ptr<code_chunk> code_chunk_shared_ptr_t;
 
             typedef struct code_chunk {
-                function_descriptor::BYTECODE bytecode_;
+                Runtime::BYTE bytecode_;
                 bool is_plug_;  //to be patched later
                 code_chunk_shared_ptr_t jump_dst_; //if is_plug_ == true, then we must patch our bytecode_ with the address of an instruction following after the jump_dst_
             } code_chunk_t;
@@ -66,9 +66,9 @@ namespace Freefoil {
             void codegen_mult_divide_op(const iter_t &iter);
             void codegen_plus_minus_op(const iter_t &iter);
 
-            void code_emit_branch(function_descriptor::BYTECODE opcode);
-            void code_emit(function_descriptor::BYTECODE opcode);
-            void code_emit(function_descriptor::BYTECODE opcode, std::size_t index);
+            void code_emit_branch(Runtime::BYTE opcode);
+            void code_emit(Runtime::BYTE opcode);
+            void code_emit(Runtime::BYTE opcode, std::size_t index);
             void code_emit_cast(value_descriptor::E_VALUE_TYPE src_type, value_descriptor::E_VALUE_TYPE cast_type);
             void code_emit_plug();
             void set_jumps_dsts(vector<code_chunk_shared_ptr_t> &jumps_table, const code_chunk_shared_ptr_t &dst_code_chunk);

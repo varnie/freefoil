@@ -6,6 +6,8 @@
 #include "AST_defs.h"
 #include "tree_analyzer.h"
 #include "codegen.h"
+#include "freefoil_vm.h"
+
 #include <string>
 
 namespace Freefoil {

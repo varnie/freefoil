@@ -164,6 +164,12 @@ namespace Freefoil {
         return funcs_list_;
     }
 
+    const constants_pool &tree_analyzer::get_parsed_constants_pool() const{
+
+        assert(errors_count_ == 0);
+        return constants_pool_;
+    }
+
     void tree_analyzer::setup_core_funcs() {
 
         //TODO: populate core_funcs_list_ with core functions

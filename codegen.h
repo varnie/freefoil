@@ -12,6 +12,7 @@
 #include <boost/shared_ptr.hpp>
 
 namespace Freefoil {
+
     namespace Private {
 
         using Private::iter_t;
@@ -23,9 +24,8 @@ namespace Freefoil {
         using boost::shared_ptr;
 
         class codegen {
-        private:
-
             class code_chunk;
+        public:
             typedef shared_ptr<code_chunk> code_chunk_shared_ptr_t;
 
             typedef struct code_chunk {
@@ -35,14 +35,10 @@ namespace Freefoil {
             } code_chunk_t;
 
             typedef vector<code_chunk_shared_ptr_t> jumps_t;
-            stack<jumps_t> true_jmps_, false_jmps_;
-
             typedef list<code_chunk_shared_ptr_t> code_chunk_list_t;
             typedef vector<code_chunk_list_t> code_chunks_t;
-            code_chunks_t code_chunks_;
 
-            function_shared_ptr_list_t parsed_funcs_;
-
+        private:
             void codegen_script(const iter_t &iter);
             void codegen_func_impl(const iter_t &iter);
             void codegen_func_body(const iter_t &iter);
@@ -76,7 +72,11 @@ namespace Freefoil {
 
         public:
             codegen();
-            void exec(const iter_t &tree_top, const function_shared_ptr_list_t &parsed_funcs);
+            code_chunks_t &exec(const iter_t &tree_top, const function_shared_ptr_list_t &parsed_funcs);
+        private:
+             stack<jumps_t> true_jmps_, false_jmps_;
+             code_chunks_t code_chunks_;
+             function_shared_ptr_list_t parsed_funcs_;
         };
     }
 }

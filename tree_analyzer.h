@@ -82,6 +82,7 @@ namespace Freefoil {
             tree_analyzer();
             bool parse(const iter_t &tree_top);
             const function_shared_ptr_list_t &get_parsed_funcs_list() const;
+            const constants_pool &get_parsed_constants_pool() const;
         };
     }
 }

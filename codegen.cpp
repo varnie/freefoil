@@ -18,7 +18,7 @@ namespace Freefoil {
     codegen::codegen() {
     }
 
-    void codegen::exec(const iter_t &tree_top, const function_shared_ptr_list_t &parsed_funcs) {
+    codegen::code_chunks_t &codegen::exec(const iter_t &tree_top, const function_shared_ptr_list_t &parsed_funcs) {
 
         std::cout << "codegen begin" << std::endl;
         parsed_funcs_ = parsed_funcs;
@@ -39,6 +39,8 @@ namespace Freefoil {
         }
 
         std::cout << "codegen end" << std::endl;
+
+        return code_chunks_;
     }
 
     void codegen::codegen_script(const iter_t &iter) {
@@ -57,40 +59,7 @@ namespace Freefoil {
         assert(iter->value.id() == freefoil_grammar::func_impl_ID);
 
         code_chunks_.push_back(code_chunk_list_t());
-
         codegen_func_body(iter->children.begin() + 1);
-
-        typedef std::multimap<code_chunk_shared_ptr_t, code_chunk_shared_ptr_t> code_chunk2code_chunk_map_t;
-        code_chunk2code_chunk_map_t dst2srcmap;
-
-        int instruction_index = 0;
-        for (code_chunk_list_t::iterator code_chunk_begin_iter = code_chunks_.back().begin(), code_chunk_iter_end = code_chunks_.back().end(), curr_code_chunk_iter = code_chunk_begin_iter;
-                curr_code_chunk_iter != code_chunk_iter_end; ++curr_code_chunk_iter) {
-
-            code_chunk_shared_ptr_t curr_code_chunk = *curr_code_chunk_iter;
-
-            if (!curr_code_chunk->is_plug_) {
-                std::pair<code_chunk2code_chunk_map_t::iterator, code_chunk2code_chunk_map_t::iterator> itp = dst2srcmap.equal_range(curr_code_chunk);
-                for (std::multimap<code_chunk_shared_ptr_t, code_chunk_shared_ptr_t>::iterator it = itp.first; it != itp.second; ++it) {
-                    // result is in *it
-                    code_chunk_shared_ptr_t src_to_be_patched = it->second;
-                    src_to_be_patched->bytecode_ = instruction_index;
-                }
-            } else {
-                code_chunk_list_t::iterator iter = std::find(code_chunk_begin_iter, code_chunk_iter_end, curr_code_chunk->jump_dst_);
-                assert(iter != code_chunk_iter_end);
-
-                code_chunk_shared_ptr_t jump_dst =  *(++iter);
-                dst2srcmap.insert(std::make_pair<code_chunk_shared_ptr_t, code_chunk_shared_ptr_t>(jump_dst, curr_code_chunk));
-            }
-
-            ++instruction_index;
-        }
-
-        for (code_chunk_list_t::const_iterator curr_code_chunk_iter = code_chunks_.back().begin(), code_chunk_iter_end = code_chunks_.back().end();
-                curr_code_chunk_iter != code_chunk_iter_end; ++curr_code_chunk_iter) {
-            std::cout << (signed int) (*curr_code_chunk_iter)->bytecode_ << " ";
-        }
     }
 
     void codegen::codegen_func_body(const iter_t &iter) {

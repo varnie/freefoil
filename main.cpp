@@ -4,7 +4,14 @@
 
 using std::string;
 
+//TODO: parse program args
 int main() {
+
+    bool optimize, save_2_file, show, execute;
+    optimize = true;
+    save_2_file = false;
+    show = true;
+    execute = false;
 
     Freefoil::compiler c;
 
@@ -15,7 +22,7 @@ int main() {
             break;
         }
 
-        c.exec(str);
+        c.exec(str, optimize, save_2_file, show, execute);
     }
 
     return 0;

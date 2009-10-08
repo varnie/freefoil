@@ -65,10 +65,11 @@ namespace Freefoil {
             void codegen_cmp_op(const iter_t &iter);
             void codegen_mult_divide_op(const iter_t &iter);
             void codegen_plus_minus_op(const iter_t &iter);
+            void codegen_return_stmt(const iter_t &iter);
 
             void code_emit_branch(Runtime::BYTE opcode);
             void code_emit(Runtime::BYTE opcode);
-            void code_emit(Runtime::BYTE opcode, std::size_t index);
+            void code_emit(Runtime::BYTE opcode, Runtime::BYTE index);
             void code_emit_cast(value_descriptor::E_VALUE_TYPE src_type, value_descriptor::E_VALUE_TYPE cast_type);
             void code_emit_plug();
             void set_jumps_dsts(vector<code_chunk_shared_ptr_t> &jumps_table, const code_chunk_shared_ptr_t &dst_code_chunk);

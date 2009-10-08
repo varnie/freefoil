@@ -51,29 +51,30 @@ namespace Freefoil {
                             boost::bind(&function_descriptor::get_param_descriptors_count, _1) != invoke_args_count
                            );
 
-        std::vector<std::size_t> good_candidates_indexes;
+        for (function_shared_ptr_list_t::iterator cur_iter = candidates_funcs.begin(); cur_iter != candidates_funcs.end();  ){
 
-        for (std::size_t i = 0, count = candidates_funcs.size(); i < count; ++i) {
-
-            const function_shared_ptr_t tested_func = candidates_funcs[i];
-
-            assert(invoke_args_count == tested_func->get_param_descriptors_count());
-            const param_descriptors_shared_ptr_list_t &params_list = tested_func->get_param_descriptors();
+            assert(invoke_args_count == (*cur_iter)->get_param_descriptors_count());
+            const param_descriptors_shared_ptr_list_t &params_list = (*cur_iter)->get_param_descriptors();
+            bool is_valid = true;
             for (int j = 0; j < invoke_args_count; ++j) {
                 if (!is_assignable(params_list[j]->get_value_type(), invoke_args[j])) {
-                    continue;
+                    is_valid = false;
+                    break;
                 }
             }
-
-            good_candidates_indexes.push_back(i);
+            if (is_valid){
+                ++cur_iter;
+            }else{
+                cur_iter = candidates_funcs.erase(cur_iter);
+            }
         }
 
-        if (good_candidates_indexes.size() != 1) {
-            //    print_error("ambiguous function " + call_name + " call");
-            //    ++errors_count_;
+        if (candidates_funcs.size() != 1){
             return -1; //mark error
-        } else {
-            return good_candidates_indexes.front();
+        }else{
+            return std::distance(funcs.begin(),
+                                 std::find(funcs.begin(), funcs.end(), candidates_funcs.front())
+                                );
         }
     }
 
@@ -90,6 +91,7 @@ namespace Freefoil {
         std::cout << "analyze begin" << std::endl;
 
         errors_count_ = 0;
+
         funcs_list_.clear();
 
         const parser_id id = tree_top->value.id();
@@ -145,7 +147,7 @@ namespace Freefoil {
         //TODO: add check that each func impl has "return stmt" in all "key points"
         //and other checks
 
-        if (funcs_list_.size() > Runtime::max_byte_value) {
+        if ((signed int)funcs_list_.size() > Runtime::max_byte_value) {
             print_error("user functions limit exceeded");
             ++errors_count_;
         }
@@ -170,7 +172,7 @@ namespace Freefoil {
         core_funcs_list_.push_back(function_shared_ptr_t (new function_descriptor("foo", value_descriptor::voidType, param_descriptors)));
     }
 
-    tree_analyzer::tree_analyzer() :errors_count_(0), symbols_handler_(NULL), curr_parsing_function_(), stack_offset_(0) {
+    tree_analyzer::tree_analyzer() :errors_count_(0), symbols_handler_(NULL), curr_parsing_function_() {
         setup_core_funcs();
     }
 
@@ -210,6 +212,7 @@ namespace Freefoil {
     void tree_analyzer::parse_func_impl(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::func_impl_ID);
+
         const function_shared_ptr_t parsed_func = parse_func_head(iter->children.begin());
 
         //is it an implementation of previously declared function?
@@ -256,7 +259,7 @@ namespace Freefoil {
 
         value_descriptor::E_VALUE_TYPE val_type;
         bool is_ref = false;
-        std::string val_name = "";
+        std::string val_name("");
 
         const std::string val_type_as_str(parse_str(iter->children.begin()));
         //TODO: add other function types checking
@@ -286,14 +289,14 @@ namespace Freefoil {
             }
         }
         assert(cur_iter == iter_end);
-        return param_descriptor_shared_ptr_t(new param_descriptor(val_type, ++stack_offset_, val_name, is_ref));
+        return param_descriptor_shared_ptr_t(new param_descriptor(val_type, ++args_count_, val_name, is_ref));
     }
 
     param_descriptors_shared_ptr_list_t tree_analyzer::parse_func_param_descriptors_list(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::params_list_ID);
 
-        stack_offset_ = 0;
+        args_count_ = 0;
         param_descriptors_shared_ptr_list_t param_descriptors_list;
         for (iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter) {
             param_descriptors_list.push_back(parse_func_param_descriptor(cur_iter));
@@ -326,7 +329,7 @@ namespace Freefoil {
 
         param_descriptors_shared_ptr_list_t param_descriptors_list = parse_func_param_descriptors_list(iter->children.begin()+2);
 
-        if (param_descriptors_list.size() > Runtime::max_byte_value) {
+        if ((signed int) param_descriptors_list.size() > Runtime::max_byte_value) {
             print_error(iter->children.begin()+2, "function params limit exceeded");
             ++errors_count_;
         }
@@ -371,7 +374,9 @@ namespace Freefoil {
 
                 const std::string var_name(parse_str(cur_iter->children.begin()->children.begin()));
 
-                if (!symbols_handler_->insert(var_name, value_descriptor(var_type, stack_offset_))) {
+                ++locals_count_;
+
+                if (!symbols_handler_->insert(var_name, value_descriptor(var_type, -locals_count_))) {
                     print_error(cur_iter->children.begin()->children.begin(), "redeclaration of variable " + var_name);
                     ++errors_count_;
                 }
@@ -383,7 +388,7 @@ namespace Freefoil {
                     curr_parsing_function_->inc_local_vars_count();
                 }
 
-                create_attributes(cur_iter->children.begin()->children.begin(), var_type, stack_offset_);
+                create_attributes(cur_iter->children.begin()->children.begin(), var_type, -locals_count_);
 
                 if (cur_iter->children.begin()->children.begin() + 1 != cur_iter->children.begin()->children.end()) {
                     //it is an assign expr
@@ -401,9 +406,10 @@ namespace Freefoil {
                         ++errors_count_;
                     }
                 }
-                ++stack_offset_;
             } else {
                 assert(cur_iter->children.begin()->value.id() == freefoil_grammar::ident_ID);
+
+                ++locals_count_;
 
                 if (curr_parsing_function_->get_local_vars_count() >= Runtime::max_byte_value) {
                     print_error(cur_iter->children.begin()->children.begin(), "local variables limit exceeded");
@@ -413,9 +419,8 @@ namespace Freefoil {
                 }
 
                 const std::string var_name(parse_str(cur_iter->children.begin()));
-                symbols_handler_->insert(var_name, value_descriptor(var_type, stack_offset_));
-                create_attributes(cur_iter->children.begin(), var_type);
-                ++stack_offset_;
+                symbols_handler_->insert(var_name, value_descriptor(var_type, -locals_count_));
+                create_attributes(cur_iter->children.begin(), var_type, -locals_count_);
             }
         }
     }
@@ -424,11 +429,11 @@ namespace Freefoil {
 
         switch (iter->value.id().to_long()) {
         case freefoil_grammar::block_ID: {
-            const int stack_offset = stack_offset_;
+            const Runtime::BYTE locals_count = locals_count_;
             symbols_handler_->scope_begin();
             parse_stmt(iter->children.begin());
             symbols_handler_->scope_end();
-            stack_offset_ = stack_offset;
+            locals_count_ = locals_count;
             break;
         }
         case freefoil_grammar::var_declare_stmt_list_ID: {
@@ -438,12 +443,18 @@ namespace Freefoil {
         case freefoil_grammar::return_stmt_ID: {
             parse_return_stmt(iter);
             break;
-            case freefoil_grammar::stmt_end_ID:
-                break;
-                //TODO: check for other stmts
-            default:
-                break;
-            }
+        }
+        case freefoil_grammar::stmt_end_ID: {
+            break;
+        }
+        case freefoil_grammar::func_call_ID:{
+            parse_func_call(iter);
+            break;
+        }
+        //TODO: check for other stmts
+        default: {
+            break;
+        }
         }
     }
 
@@ -455,20 +466,30 @@ namespace Freefoil {
 
         value_descriptor::E_VALUE_TYPE func_type = curr_parsing_function_->get_type();
 
-        if (iter->children.empty()){
-            if (func_type != value_descriptor::voidType){
+        if (iter->children.empty()) {
+            if (func_type != value_descriptor::voidType) {
                 print_error(iter, "unable to return value from void function");
                 ++errors_count_;
-            }else{
+            } else {
                 create_attributes(iter, func_type);
             }
-        }else{
-            if (func_type != value_descriptor::voidType){
+        } else {
+            if (func_type != value_descriptor::voidType) {
                 assert(iter->children.size() == 1);
                 assert(iter->children.begin()->value.id() == freefoil_grammar::bool_expr_ID);
                 parse_bool_expr(iter->children.begin());
-                create_attributes(iter, iter->children.begin()->value.value().get_value_type());
-            }else{
+                value_descriptor::E_VALUE_TYPE expr_val_type = iter->children.begin()->value.value().get_value_type();
+                if (is_assignable(func_type, expr_val_type)) {
+                    if (func_type != expr_val_type) {
+                        //make implicit cast explicit
+                        create_cast(iter->children.begin(), func_type);
+                    }
+                    create_attributes(iter, func_type);
+                } else {
+                    print_error(iter->children.begin(), "cannot assign " + type_to_string(expr_val_type) + " to " + type_to_string(func_type));
+                    ++errors_count_;
+                }
+            } else {
                 print_error(iter, "unable to return value from void function");
                 ++errors_count_;
             }
@@ -881,7 +902,7 @@ namespace Freefoil {
     void tree_analyzer::parse_func_body(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::func_body_ID);
-        stack_offset_ = curr_parsing_function_->get_param_descriptors_count();
+        locals_count_ = 0;
 
         symbols_handler_.reset(new symbols_handler);
         symbols_handler_->scope_begin();

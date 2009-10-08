@@ -89,7 +89,7 @@ namespace Freefoil {
 
         for (code_chunk_list_t::const_iterator curr_code_chunk_iter = code_chunks_.back().begin(), code_chunk_iter_end = code_chunks_.back().end();
                 curr_code_chunk_iter != code_chunk_iter_end; ++curr_code_chunk_iter) {
-            std::cout << (unsigned int) (*curr_code_chunk_iter)->bytecode_ << " ";
+            std::cout << (signed int) (*curr_code_chunk_iter)->bytecode_ << " ";
         }
     }
 
@@ -113,11 +113,56 @@ namespace Freefoil {
             codegen_var_declare_stmt_list(iter);
             break;
         }
-        case freefoil_grammar::stmt_end_ID:
+        case freefoil_grammar::return_stmt_ID:{
+            codegen_return_stmt(iter);
             break;
+        }
+        case freefoil_grammar::stmt_end_ID:{
+            break;
+        }
+        case freefoil_grammar::func_call_ID:{
+            codegen_func_call(iter);
+            break;
+        }
             //TODO: check for other stmts
         default:
             break;
+        }
+    }
+
+    void codegen::codegen_return_stmt(const iter_t &iter){
+
+        assert(iter->value.id() == freefoil_grammar::return_stmt_ID);
+
+        if (!iter->children.empty()){
+            assert(iter->children.size() == 1);
+            assert(iter->children.begin()->value.id() == freefoil_grammar::bool_expr_ID);
+            codegen_bool_expr(iter->children.begin());
+
+            value_descriptor::E_VALUE_TYPE cast_type = get_cast(iter->children.begin());
+            if (cast_type != value_descriptor::undefinedType) {
+                code_emit_cast(iter->children.begin()->value.value().get_value_type(), cast_type);
+                if (cast_type == value_descriptor::intType or cast_type == value_descriptor::boolType){
+                    code_emit(OPCODE_iret);
+                }else if (cast_type == value_descriptor::floatType){
+                    code_emit(OPCODE_fret);
+                }else{
+                    assert(cast_type == value_descriptor::stringType);
+                    code_emit(OPCODE_sret);
+                }
+            }else{
+                value_descriptor::E_VALUE_TYPE expr_val_type = iter->children.begin()->value.value().get_value_type();
+                if (expr_val_type == value_descriptor::intType or expr_val_type == value_descriptor::boolType){
+                    code_emit(OPCODE_iret);
+                }else if (expr_val_type == value_descriptor::floatType){
+                    code_emit(OPCODE_fret);
+                }else{
+                    assert(expr_val_type == value_descriptor::stringType);
+                    code_emit(OPCODE_sret);
+                }
+            }
+        }else{
+            code_emit(OPCODE_ret);
         }
     }
 
@@ -143,7 +188,6 @@ namespace Freefoil {
 
                     const node_attributes &n = cur_iter->children.begin()->children.begin()->value.value();
                     int offset = n.get_index();
-                    assert(offset != -1);
                     value_descriptor::E_VALUE_TYPE ident_value_type = n.get_value_type();
                     assert(ident_value_type != value_descriptor::undefinedType);
                     if (ident_value_type == value_descriptor::boolType || ident_value_type == value_descriptor::intType) {
@@ -612,7 +656,7 @@ namespace Freefoil {
         code_chunks_.back().push_back(pnew_code_chunk);
     }
 
-    void codegen::code_emit(Runtime::BYTE opcode, std::size_t index) {
+    void codegen::code_emit(Runtime::BYTE opcode, Runtime::BYTE index) {
 
         code_emit(opcode);
         code_emit(index);

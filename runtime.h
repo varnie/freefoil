@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include <cassert>
 
 namespace Freefoil {
 
@@ -11,7 +12,7 @@ namespace Freefoil {
         using std::vector;
         using std::string;
 
-        typedef unsigned char BYTE;
+        typedef signed char BYTE;
         static const BYTE max_byte_value =  std::numeric_limits<BYTE>::max();
 
         class constants_pool {
@@ -88,7 +89,11 @@ namespace Freefoil {
             BYTE args_count_;
             BYTE locals_count_;
             BYTE *pc_;
-            bool void_type; //marks whether the function returns void or not
+            bool void_type_; //marks whether the function returns void or not
+        public:
+            function_template(BYTE args_count, BYTE locals_count, BYTE *pc, bool void_type)
+                :args_count_(args_count), locals_count_(locals_count), pc_(pc), void_type_(false)
+                {}
         };
     }
 }

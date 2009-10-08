@@ -70,6 +70,13 @@ namespace Freefoil {
             if (the_tree_analyzer.parse(the_parse_info.trees.begin())) {
                 the_codegen.exec(the_parse_info.trees.begin(), the_tree_analyzer.get_parsed_funcs_list());
                 //TODO:
+                /*
+                if (is_save_to_file){
+                }
+                if (interpret){
+
+                }
+                */
             }
         }
     }

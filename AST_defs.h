@@ -18,7 +18,7 @@ namespace Freefoil {
             value_descriptor::E_VALUE_TYPE cast_type_;
             int index_;
         public:
-            node_attributes():value_type_(value_descriptor::undefinedType), cast_type_(value_descriptor::undefinedType), index_(-1) {}
+            node_attributes():value_type_(value_descriptor::undefinedType), cast_type_(value_descriptor::undefinedType) {}
 
             void set_value_type(const value_descriptor::E_VALUE_TYPE value_type) {
                 value_type_ = value_type;

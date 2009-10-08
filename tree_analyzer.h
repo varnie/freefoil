@@ -35,9 +35,10 @@ namespace Freefoil {
             typedef scoped_ptr<symbols_handler> symbols_handler_scoped_ptr;
             symbols_handler_scoped_ptr symbols_handler_;
             function_shared_ptr_t curr_parsing_function_;
-            int stack_offset_;
 
             constants_pool constants_pool_;
+
+            Runtime::BYTE args_count_, locals_count_;
 
             void setup_core_funcs();
 

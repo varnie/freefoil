@@ -60,7 +60,10 @@ namespace Freefoil {
             OPCODE_jmp = 37, /*unconditional goto */
 
             OPCODE_halt = 38,  //exit
-            OPCODE_ret = 39,
+            OPCODE_ret = 39,   //return
+            OPCODE_iret = 40,  //return int
+            OPCODE_fret = 41,  //return float
+            OPCODE_sret = 42,  //return str
             //TODO: add other opcodes
         };
     }

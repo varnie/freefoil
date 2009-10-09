@@ -57,12 +57,12 @@ namespace Freefoil {
         }
     }
 
-    Runtime::program_entry codegen::generate_program_entry(const function_shared_ptr_list_t &user_funcs, const Runtime::constants_pool &constants, bool show) const {
+    Runtime::program_entry codegen::generate_program_entry(const Runtime::constants_pool &constants, bool show) const {
 
-        assert(user_funcs.size() == code_chunks_.size());
+        assert(user_funcs_.size() == code_chunks_.size());
 
         Runtime::function_templates_vector_t user_funcs_templates;
-        user_funcs_templates.reserve(user_funcs.size());
+        user_funcs_templates.reserve(user_funcs_.size());
 
         if (show) {
             std::cout << "bytecode for compiled user functions:" << std::endl;
@@ -83,25 +83,25 @@ namespace Freefoil {
                     std::cout << (signed int) (*curr_code_chunk_iter)->bytecode_ << " ";
                 }
             }
-            const function_shared_ptr_t &user_func = user_funcs[function_index];
+            const function_shared_ptr_t &user_func = user_funcs_[function_index];
             user_funcs_templates.push_back(Runtime::function_template(user_func->get_args_count(), user_func->get_locals_count(), instructions, user_func->get_type() == value_descriptor::voidType));
             ++function_index;
         }
 
-        function_shared_ptr_list_t::const_iterator entry_point_func_iter = std::find_if(
-                           user_funcs.begin(),
-                           user_funcs.end(),
-                           boost::bind(&entry_point_functor, _1));
-        assert(entry_point_func_iter != user_funcs.end());
-
-        const std::size_t entry_point_func_index = std::distance(user_funcs.begin(), entry_point_func_iter);
-
-        return Runtime::program_entry(user_funcs_templates, constants, entry_point_func_index);
+        return Runtime::program_entry(user_funcs_templates, constants, entry_point_func_index_);
     }
 
     Runtime::program_entry codegen::exec(const iter_t &tree_top, const function_shared_ptr_list_t &user_funcs, const Runtime::constants_pool &constants, bool optimize, bool show) {
 
         std::cout << "codegen begin" << std::endl;
+
+        user_funcs_ = user_funcs;
+        function_shared_ptr_list_t::const_iterator entry_point_func_iter = std::find_if(
+            user_funcs.begin(),
+            user_funcs.end(),
+            boost::bind(&entry_point_functor, _1));
+        assert(entry_point_func_iter != user_funcs.end());
+        entry_point_func_index_ = std::distance(user_funcs.begin(), entry_point_func_iter);
 
         const parser_id id = tree_top->value.id();
         assert(id == freefoil_grammar::script_ID || id == freefoil_grammar::func_decl_ID || id == freefoil_grammar::func_impl_ID);
@@ -126,7 +126,7 @@ namespace Freefoil {
 
         std::cout << "codegen end" << std::endl;
 
-        return  generate_program_entry(user_funcs, constants, show);
+        return generate_program_entry(constants, show);
     }
 
     void codegen::codegen_script(const iter_t &iter) {
@@ -146,6 +146,17 @@ namespace Freefoil {
 
         code_chunks_.push_back(code_chunk_list_t());
         codegen_func_body(iter->children.begin() + 1);
+
+        assert(iter->value.value().get_value_type() != value_descriptor::undefinedType);
+        if (iter->value.value().get_value_type() == value_descriptor::voidType){
+            if (code_chunks_.back().empty() or code_chunks_.back().back()->bytecode_ != OPCODE_ret){
+                code_emit(OPCODE_ret);
+            }
+        }
+
+        if (code_chunks_.size() - 1 == entry_point_func_index_){
+            code_emit(OPCODE_halt);
+        }
     }
 
     void codegen::codegen_func_body(const iter_t &iter) {

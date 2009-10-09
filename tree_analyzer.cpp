@@ -232,6 +232,7 @@ namespace Freefoil {
         assert(iter->value.id() == freefoil_grammar::func_impl_ID);
 
         const function_shared_ptr_t parsed_func = parse_func_head(iter->children.begin());
+        create_attributes(iter, parsed_func->get_type());
 
         //is it an implementation of previously declared function?
         const function_shared_ptr_list_t::const_iterator old_func_iter

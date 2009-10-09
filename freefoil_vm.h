@@ -74,6 +74,9 @@ namespace Freefoil {
 
                 const function_template &entry_point_func = program_.user_funcs_[program_.entry_point_func_index_];
                 pc_ = &*entry_point_func.instructions_.begin();
+                const BYTE *pc_end = &*(entry_point_func.instructions_.end() - 1);
+                push_memory((ULONG)pc_end);
+                push_memory((ULONG)fp_);
                 sp_ -= entry_point_func.locals_count_;
 
      //           sp_ -= 1; //1 local
@@ -105,9 +108,9 @@ namespace Freefoil {
                         case OPCODE_iret:{  //return int
                             fp_ = (ULONG *) pop_memory();
                             pc_ = (BYTE *) pop_memory();
-                            const ULONG retv = pop_long();
+                            //const ULONG retv = pop_long();
                             sp_ = fp_;
-                            push_long(retv);
+                            //push_long(retv);
                             break;
                         }
                         case OPCODE_fret:{  //return float
@@ -139,10 +142,13 @@ namespace Freefoil {
                             const BYTE variable_offset = *pc_++;
                             ULONG value = pop_long();
                             *(fp_ + variable_offset) = value;
-                            printf("value: %ld", value);
+                            printf("value: %ld", value);    //debug only
                             break;
                         }
-
+                        default:{
+                            printf("wrong opcode: %d", ip_);
+                            break;
+                        }
                     }
                 }
             }

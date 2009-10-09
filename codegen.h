@@ -70,7 +70,7 @@ namespace Freefoil {
             void code_emit_plug();
             void set_jumps_dsts(vector<code_chunk_shared_ptr_t> &jumps_table, const code_chunk_shared_ptr_t &dst_code_chunk);
             void resolve_jumps();
-            Runtime::function_templates_vector_t generate_function_templates(const function_shared_ptr_list_t &user_funcs, bool show) const;
+            Runtime::program_entry generate_program_entry(const function_shared_ptr_list_t &user_funcs, const Runtime::constants_pool &constants, bool show) const;
         public:
             codegen();
             Runtime::program_entry exec(const iter_t &tree_top, const function_shared_ptr_list_t &user_funcs, const Runtime::constants_pool &constants, bool optimize, bool show);

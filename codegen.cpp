@@ -7,6 +7,8 @@
 #include <map>
 #include <iostream>
 
+#include <boost/bind.hpp>
+
 namespace Freefoil {
 
     using namespace Private;
@@ -55,7 +57,7 @@ namespace Freefoil {
         }
     }
 
-    Runtime::function_templates_vector_t codegen::generate_function_templates(const function_shared_ptr_list_t &user_funcs, bool show) const {
+    Runtime::program_entry codegen::generate_program_entry(const function_shared_ptr_list_t &user_funcs, const Runtime::constants_pool &constants, bool show) const {
 
         assert(user_funcs.size() == code_chunks_.size());
 
@@ -86,7 +88,15 @@ namespace Freefoil {
             ++function_index;
         }
 
-        return user_funcs_templates;
+        function_shared_ptr_list_t::const_iterator entry_point_func_iter = std::find_if(
+                           user_funcs.begin(),
+                           user_funcs.end(),
+                           boost::bind(&entry_point_functor, _1));
+        assert(entry_point_func_iter != user_funcs.end());
+
+        const std::size_t entry_point_func_index = std::distance(user_funcs.begin(), entry_point_func_iter);
+
+        return Runtime::program_entry(user_funcs_templates, constants, entry_point_func_index);
     }
 
     Runtime::program_entry codegen::exec(const iter_t &tree_top, const function_shared_ptr_list_t &user_funcs, const Runtime::constants_pool &constants, bool optimize, bool show) {
@@ -116,7 +126,7 @@ namespace Freefoil {
 
         std::cout << "codegen end" << std::endl;
 
-        return Runtime::program_entry(generate_function_templates(user_funcs, show), constants);
+        return  generate_program_entry(user_funcs, constants, show);
     }
 
     void codegen::codegen_script(const iter_t &iter) {

@@ -68,11 +68,11 @@ namespace Freefoil {
                 //do nothing
             }
 
-            void exec(const BYTE entry_point_func_index){
+            void exec(){
 
                 init();
 
-                const function_template &entry_point_func = program_.user_funcs_[entry_point_func_index];
+                const function_template &entry_point_func = program_.user_funcs_[program_.entry_point_func_index_];
                 pc_ = &*entry_point_func.instructions_.begin();
                 sp_ -= entry_point_func.locals_count_;
 

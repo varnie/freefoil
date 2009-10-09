@@ -80,7 +80,7 @@ namespace Freefoil {
 
                     if (execute) {
                         Runtime::freefoil_vm vm(the_program);
-                        vm.exec(1); //TODO: fix index of main function
+                        vm.exec(); //TODO: add sending params
                     }
                 }
             }

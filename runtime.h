@@ -105,9 +105,10 @@ namespace Freefoil {
 
             function_templates_vector_t user_funcs_;
             constants_pool constants_pool_;
+            std::size_t entry_point_func_index_;
         public:
-            program_entry(const function_templates_vector_t& user_funcs, const constants_pool &constants)
-                :user_funcs_(user_funcs), constants_pool_(constants)
+            program_entry(const function_templates_vector_t& user_funcs, const constants_pool &constants, const std::size_t entry_point_func_index)
+                :user_funcs_(user_funcs), constants_pool_(constants), entry_point_func_index_(entry_point_func_index)
                 {}
         };
     }

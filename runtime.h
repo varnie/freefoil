@@ -81,6 +81,8 @@ namespace Freefoil {
             }
         };
 
+        typedef vector<BYTE> instructions_stream_t;
+
         class freefoil_vm;
 
         class function_template{
@@ -88,11 +90,24 @@ namespace Freefoil {
 
             BYTE args_count_;
             BYTE locals_count_;
-            BYTE *pc_;
-            bool void_type_; //marks whether the function returns void or not
+            instructions_stream_t instructions_;
+            bool void_type_; //marks whether or not function returns void
         public:
-            function_template(BYTE args_count, BYTE locals_count, BYTE *pc, bool void_type)
-                :args_count_(args_count), locals_count_(locals_count), pc_(pc), void_type_(false)
+            function_template(const BYTE args_count, const BYTE locals_count, const instructions_stream_t &instructions, const bool void_type)
+                :args_count_(args_count), locals_count_(locals_count), instructions_(instructions), void_type_(false)
+                {}
+        };
+
+        typedef vector<function_template> function_templates_vector_t;
+
+        class program_entry{
+            friend class freefoil_vm;
+
+            function_templates_vector_t user_funcs_;
+            constants_pool constants_pool_;
+        public:
+            program_entry(const function_templates_vector_t& user_funcs, const constants_pool &constants)
+                :user_funcs_(user_funcs), constants_pool_(constants)
                 {}
         };
     }

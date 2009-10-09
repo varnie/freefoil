@@ -16,16 +16,14 @@ namespace Freefoil {
         using std::vector;
         using boost::scoped_array;
 
-        typedef vector<BYTE> instructions_stream_t;
-        typedef vector<function_template> function_templates_vector_t;
         typedef unsigned long ULONG;
 
         class freefoil_vm {
-            function_templates_vector_t user_funcs_;
+            const program_entry &program_;
 
             ULONG *sp_; //operands stack ponter
             BYTE ip_;  //current decoded instruction
-            BYTE *pc_; //current position in the instructions stream
+            const BYTE *pc_; //current position in the instructions stream
             ULONG *fp_; //frame pointer
             ULONG *pMemory_sp_;
 
@@ -33,8 +31,6 @@ namespace Freefoil {
 
             scoped_array<ULONG> pMemory_;
             scoped_array<ULONG> pStack_;
-            instructions_stream_t instructions_;
-            constants_pool constants_pool_;
 
             void init() {
                 pStack_.reset(new ULONG[STACK_SIZE]);
@@ -65,19 +61,20 @@ namespace Freefoil {
             }
 
         public:
-            freefoil_vm(const function_templates_vector_t &user_funcs, const instructions_stream_t &instructions, const constants_pool &constants, BYTE *pc) {
-                user_funcs_ = user_funcs;
-                instructions_ = instructions;
-                constants_pool_ = constants;
-                pc_ = pc;
-                init();
+            freefoil_vm(const program_entry &program) : program_(program) {
             }
 
             ~freefoil_vm(){
                 //do nothing
             }
 
-            void exec(const function_template &entry_point){
+            void exec(const BYTE entry_point_func_index){
+
+                init();
+
+                const function_template &entry_point_func = program_.user_funcs_[entry_point_func_index];
+                pc_ = &*entry_point_func.instructions_.begin();
+                sp_ -= entry_point_func.locals_count_;
 
      //           sp_ -= 1; //1 local
      //           fp_ = sp_;
@@ -92,11 +89,11 @@ namespace Freefoil {
                             push_memory((ULONG)old_frame);
                             --sp_;
                             fp_ = sp_;
-                            const function_template f = user_funcs_[user_func_index];
+                            const function_template &f = program_.user_funcs_[user_func_index];
                             const BYTE locals_count = f.locals_count_;
                             check_room(locals_count);
                             sp_ -= locals_count; //make room for local vars
-                            pc_ = f.pc_;    //advance pc_ to the function's first instruction
+                            pc_ = &*f.instructions_.begin();    //advance pc_ to the function's first instruction
                             break;
                         }
                         case OPCODE_ret:{   //return void
@@ -123,7 +120,7 @@ namespace Freefoil {
                         }
                         case OPCODE_iload_const:{
                             const BYTE int_constant_index = *pc_++;
-                            const int value = constants_pool_.get_int_value_from_table(int_constant_index);
+                            const int value = program_.constants_pool_.get_int_value_from_table(int_constant_index);
                             push_long(value);
                             break;
                         }

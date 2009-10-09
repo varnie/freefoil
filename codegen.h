@@ -69,14 +69,14 @@ namespace Freefoil {
             void code_emit_cast(value_descriptor::E_VALUE_TYPE src_type, value_descriptor::E_VALUE_TYPE cast_type);
             void code_emit_plug();
             void set_jumps_dsts(vector<code_chunk_shared_ptr_t> &jumps_table, const code_chunk_shared_ptr_t &dst_code_chunk);
-
+            void resolve_jumps();
+            Runtime::function_templates_vector_t generate_function_templates(const function_shared_ptr_list_t &user_funcs, bool show) const;
         public:
             codegen();
-            code_chunks_t &exec(const iter_t &tree_top, const function_shared_ptr_list_t &parsed_funcs);
+            Runtime::program_entry exec(const iter_t &tree_top, const function_shared_ptr_list_t &user_funcs, const Runtime::constants_pool &constants, bool optimize, bool show);
         private:
              stack<jumps_t> true_jmps_, false_jmps_;
              code_chunks_t code_chunks_;
-             function_shared_ptr_list_t parsed_funcs_;
         };
     }
 }

@@ -111,7 +111,7 @@ namespace Freefoil {
         }
 
         //now we have all function declarations valid
-        //some of them might contain no iterators to impl (due to errors of having only func decl in the program source)
+        //some of them might contains no iterator to impl (due to errors of having only func decl in the program source)
         //it is a time for parsing valid function's impls
         for (function_shared_ptr_list_t::const_iterator cur_iter = funcs_list_.begin(), iter_end = funcs_list_.end(); cur_iter != iter_end; ++cur_iter) {
             curr_parsing_function_ = *cur_iter;
@@ -120,7 +120,7 @@ namespace Freefoil {
             }
         }
 
-        //now we have all user-defined function heads parsed
+        //now we have all user-defined functions parsed
         function_shared_ptr_list_t::iterator cur_iter = funcs_list_.begin(), iter_end = funcs_list_.end();
         do {
             cur_iter = std::find_if(
@@ -135,18 +135,30 @@ namespace Freefoil {
             }
         } while (cur_iter != iter_end);
 
-        //entry point ("main" function) must be declared
-        if (std::find_if(
-                    funcs_list_.begin(),
-                    iter_end,
-                    boost::bind(&entry_point_functor, _1)) == iter_end) {
-            print_error("entry point not declared");
+        //check that there's only one entry point function
+        std::size_t entry_points_count = 0;
+        cur_iter =funcs_list_.begin();
+        do{
+            cur_iter = std::find_if(
+                           cur_iter,
+                           iter_end,
+                           boost::bind(&entry_point_functor, _1));
+            if (cur_iter != iter_end) {
+               ++entry_points_count;
+               ++cur_iter;
+            }
+        } while (cur_iter != iter_end);
+
+        if (entry_points_count == 0){
+            print_error("entry point function not declared");
+            ++errors_count_;
+        }else if (entry_points_count > 1){
+            print_error("unable to overload entry point function");
             ++errors_count_;
         }
 
         //TODO: add check that each func impl has "return stmt" in all "key points"
         //and other checks
-
         if ((signed int)funcs_list_.size() > Runtime::max_byte_value) {
             print_error("user functions limit exceeded");
             ++errors_count_;
@@ -387,11 +399,11 @@ namespace Freefoil {
                     ++errors_count_;
                 }
 
-                if (curr_parsing_function_->get_local_vars_count() >= Runtime::max_byte_value) {
+                if (curr_parsing_function_->get_locals_count() >= Runtime::max_byte_value) {
                     print_error(cur_iter->children.begin()->children.begin(), "local variables limit exceeded");
                     ++errors_count_;
                 } else {
-                    curr_parsing_function_->inc_local_vars_count();
+                    curr_parsing_function_->inc_locals_count();
                 }
 
                 create_attributes(cur_iter->children.begin()->children.begin(), var_type, -locals_count_);
@@ -417,11 +429,11 @@ namespace Freefoil {
 
                 ++locals_count_;
 
-                if (curr_parsing_function_->get_local_vars_count() >= Runtime::max_byte_value) {
+                if (curr_parsing_function_->get_locals_count() >= Runtime::max_byte_value) {
                     print_error(cur_iter->children.begin()->children.begin(), "local variables limit exceeded");
                     ++errors_count_;
                 } else {
-                    curr_parsing_function_->inc_local_vars_count();
+                    curr_parsing_function_->inc_locals_count();
                 }
 
                 const std::string var_name(parse_str(cur_iter->children.begin()));

@@ -18,10 +18,80 @@ namespace Freefoil {
     codegen::codegen() {
     }
 
-    codegen::code_chunks_t &codegen::exec(const iter_t &tree_top, const function_shared_ptr_list_t &parsed_funcs) {
+    void codegen::resolve_jumps() {
+
+        typedef std::multimap<code_chunk_shared_ptr_t, code_chunk_shared_ptr_t> code_chunk2code_chunk_map_t;
+        code_chunk2code_chunk_map_t dst2srcmap;
+
+        int instruction_index = 0;
+
+        for (code_chunks_t::const_iterator cur_user_func_iter = code_chunks_.begin(), user_func_iter_end = code_chunks_.end();
+                cur_user_func_iter != user_func_iter_end;
+                ++cur_user_func_iter
+            ) {
+            for (code_chunk_list_t::const_iterator code_chunk_begin_iter = (*cur_user_func_iter).begin(), curr_code_chunk_iter = code_chunk_begin_iter, code_chunk_iter_end = (*cur_user_func_iter).end();
+                    curr_code_chunk_iter != code_chunk_iter_end;
+                    ++curr_code_chunk_iter) {
+
+                code_chunk_shared_ptr_t curr_code_chunk = *curr_code_chunk_iter;
+
+                if (!curr_code_chunk->is_plug_) {
+                    std::pair<code_chunk2code_chunk_map_t::iterator, code_chunk2code_chunk_map_t::iterator> itp = dst2srcmap.equal_range(curr_code_chunk);
+                    for (code_chunk2code_chunk_map_t::iterator it = itp.first; it != itp.second; ++it) {
+                        // result is in *it
+                        code_chunk_shared_ptr_t src_to_be_patched = it->second;
+                        src_to_be_patched->bytecode_ = instruction_index;
+                    }
+                } else {
+                    code_chunk_list_t::const_iterator iter = std::find(code_chunk_begin_iter, code_chunk_iter_end, curr_code_chunk->jump_dst_);
+                    assert(iter != code_chunk_iter_end);
+
+                    code_chunk_shared_ptr_t jump_dst =  *(++iter);
+                    dst2srcmap.insert(std::make_pair<codegen::code_chunk_shared_ptr_t, codegen::code_chunk_shared_ptr_t>(jump_dst, curr_code_chunk));
+                }
+
+                ++instruction_index;
+            }
+        }
+    }
+
+    Runtime::function_templates_vector_t codegen::generate_function_templates(const function_shared_ptr_list_t &user_funcs, bool show) const {
+
+        assert(user_funcs.size() == code_chunks_.size());
+
+        Runtime::function_templates_vector_t user_funcs_templates;
+        user_funcs_templates.reserve(user_funcs.size());
+
+        if (show) {
+            std::cout << "bytecode for compiled user functions:" << std::endl;
+        }
+        std::size_t function_index = 0;
+        for (code_chunks_t::const_iterator cur_user_func_iter = code_chunks_.begin(), user_func_iter_end = code_chunks_.end();
+                cur_user_func_iter != user_func_iter_end;
+                ++cur_user_func_iter
+            ) {
+                Runtime::instructions_stream_t instructions;
+                instructions.reserve((*cur_user_func_iter).size());
+            for (code_chunk_list_t::const_iterator curr_code_chunk_iter = (*cur_user_func_iter).begin(), code_chunk_iter_end = (*cur_user_func_iter).end();
+                    curr_code_chunk_iter != code_chunk_iter_end;
+                    ++curr_code_chunk_iter
+                ) {
+                instructions.push_back((*curr_code_chunk_iter)->bytecode_);
+                if (show) {
+                    std::cout << (signed int) (*curr_code_chunk_iter)->bytecode_ << " ";
+                }
+            }
+            const function_shared_ptr_t &user_func = user_funcs[function_index];
+            user_funcs_templates.push_back(Runtime::function_template(user_func->get_args_count(), user_func->get_locals_count(), instructions, user_func->get_type() == value_descriptor::voidType));
+            ++function_index;
+        }
+
+        return user_funcs_templates;
+    }
+
+    Runtime::program_entry codegen::exec(const iter_t &tree_top, const function_shared_ptr_list_t &user_funcs, const Runtime::constants_pool &constants, bool optimize, bool show) {
 
         std::cout << "codegen begin" << std::endl;
-        parsed_funcs_ = parsed_funcs;
 
         const parser_id id = tree_top->value.id();
         assert(id == freefoil_grammar::script_ID || id == freefoil_grammar::func_decl_ID || id == freefoil_grammar::func_impl_ID);
@@ -38,9 +108,15 @@ namespace Freefoil {
             break;
         }
 
+        if (optimize) {
+            //TODO:
+        }
+
+        resolve_jumps();
+
         std::cout << "codegen end" << std::endl;
 
-        return code_chunks_;
+        return Runtime::program_entry(generate_function_templates(user_funcs, show), constants);
     }
 
     void codegen::codegen_script(const iter_t &iter) {
@@ -82,28 +158,28 @@ namespace Freefoil {
             codegen_var_declare_stmt_list(iter);
             break;
         }
-        case freefoil_grammar::return_stmt_ID:{
+        case freefoil_grammar::return_stmt_ID: {
             codegen_return_stmt(iter);
             break;
         }
-        case freefoil_grammar::stmt_end_ID:{
+        case freefoil_grammar::stmt_end_ID: {
             break;
         }
-        case freefoil_grammar::func_call_ID:{
+        case freefoil_grammar::func_call_ID: {
             codegen_func_call(iter);
             break;
         }
-            //TODO: check for other stmts
+        //TODO: check for other stmts
         default:
             break;
         }
     }
 
-    void codegen::codegen_return_stmt(const iter_t &iter){
+    void codegen::codegen_return_stmt(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::return_stmt_ID);
 
-        if (!iter->children.empty()){
+        if (!iter->children.empty()) {
             assert(iter->children.size() == 1);
             assert(iter->children.begin()->value.id() == freefoil_grammar::bool_expr_ID);
             codegen_bool_expr(iter->children.begin());
@@ -111,26 +187,26 @@ namespace Freefoil {
             value_descriptor::E_VALUE_TYPE cast_type = get_cast(iter->children.begin());
             if (cast_type != value_descriptor::undefinedType) {
                 code_emit_cast(iter->children.begin()->value.value().get_value_type(), cast_type);
-                if (cast_type == value_descriptor::intType or cast_type == value_descriptor::boolType){
+                if (cast_type == value_descriptor::intType or cast_type == value_descriptor::boolType) {
                     code_emit(OPCODE_iret);
-                }else if (cast_type == value_descriptor::floatType){
+                } else if (cast_type == value_descriptor::floatType) {
                     code_emit(OPCODE_fret);
-                }else{
+                } else {
                     assert(cast_type == value_descriptor::stringType);
                     code_emit(OPCODE_sret);
                 }
-            }else{
+            } else {
                 value_descriptor::E_VALUE_TYPE expr_val_type = iter->children.begin()->value.value().get_value_type();
-                if (expr_val_type == value_descriptor::intType or expr_val_type == value_descriptor::boolType){
+                if (expr_val_type == value_descriptor::intType or expr_val_type == value_descriptor::boolType) {
                     code_emit(OPCODE_iret);
-                }else if (expr_val_type == value_descriptor::floatType){
+                } else if (expr_val_type == value_descriptor::floatType) {
                     code_emit(OPCODE_fret);
-                }else{
+                } else {
                     assert(expr_val_type == value_descriptor::stringType);
                     code_emit(OPCODE_sret);
                 }
             }
-        }else{
+        } else {
             code_emit(OPCODE_ret);
         }
     }
@@ -326,7 +402,7 @@ namespace Freefoil {
         assert(iter->value.id() == freefoil_grammar::func_call_ID);
         assert((iter->children.begin() + 1)->value.id() == freefoil_grammar::invoke_args_list_ID);
 
-        for (iter_t cur_iter = (iter->children.begin() + 1)->children.end() - 1, iter_end = (iter->children.begin() + 1)->children.begin(); cur_iter >= iter_end; --cur_iter){
+        for (iter_t cur_iter = (iter->children.begin() + 1)->children.end() - 1, iter_end = (iter->children.begin() + 1)->children.begin(); cur_iter >= iter_end; --cur_iter) {
             assert(cur_iter->value.id() == freefoil_grammar::bool_expr_ID);
             codegen_bool_expr(cur_iter);
         }

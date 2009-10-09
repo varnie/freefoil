@@ -11,7 +11,7 @@ int main() {
     optimize = true;
     save_2_file = false;
     show = true;
-    execute = false;
+    execute = true;
 
     Freefoil::compiler c;
 

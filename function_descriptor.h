@@ -26,10 +26,10 @@ namespace Freefoil {
             param_descriptors_shared_ptr_list_t param_descriptors_list_;
             iter_t iter_body_;
             bool has_body_;
-            Runtime::BYTE local_vars_count_;
+            Runtime::BYTE locals_count_;
         public:
             function_descriptor(const string &name, const value_descriptor::E_VALUE_TYPE func_type, const param_descriptors_shared_ptr_list_t &param_descriptors_list = param_descriptors_shared_ptr_list_t())
-                    :name_(name), func_type_(func_type), param_descriptors_list_(param_descriptors_list), has_body_(false), local_vars_count_(0) {
+                    :name_(name), func_type_(func_type), param_descriptors_list_(param_descriptors_list), has_body_(false), locals_count_(0) {
             }
 
             const std::string &get_name() const {
@@ -40,6 +40,14 @@ namespace Freefoil {
             }
             const param_descriptors_shared_ptr_list_t &get_param_descriptors() const {
                 return param_descriptors_list_;
+            }
+
+            Runtime::BYTE get_locals_count() const{
+                return locals_count_;
+            }
+
+            Runtime::BYTE get_args_count() const{
+                return param_descriptors_list_.size();
             }
 
             bool has_body() const {
@@ -59,15 +67,10 @@ namespace Freefoil {
                 return param_descriptors_list_.size();
             }
 
-            void inc_local_vars_count(){
-                assert(local_vars_count_ < Runtime::max_byte_value);
-                ++local_vars_count_;
+            void inc_locals_count(){
+                assert(locals_count_ < Runtime::max_byte_value);
+                ++locals_count_;
             }
-
-            Runtime::BYTE get_local_vars_count() const{
-                return local_vars_count_;
-            }
-
         };
 
         typedef shared_ptr<function_descriptor> function_shared_ptr_t;

@@ -65,83 +65,24 @@ namespace Freefoil {
     }
 #endif
 
-    void compiler::jumps_resolve(codegen::code_chunks_t &code_chunks) const {
-
-        typedef std::multimap<codegen::code_chunk_shared_ptr_t, codegen::code_chunk_shared_ptr_t> code_chunk2code_chunk_map_t;
-        code_chunk2code_chunk_map_t dst2srcmap;
-
-        int instruction_index = 0;
-
-        for (codegen::code_chunks_t::const_iterator cur_user_func_iter = code_chunks.begin(), user_func_iter_end = code_chunks.end();
-                cur_user_func_iter != user_func_iter_end;
-                ++cur_user_func_iter
-            ) {
-            for (codegen::code_chunk_list_t::const_iterator code_chunk_begin_iter = (*cur_user_func_iter).begin(), curr_code_chunk_iter = code_chunk_begin_iter, code_chunk_iter_end = (*cur_user_func_iter).end();
-                    curr_code_chunk_iter != code_chunk_iter_end;
-                    ++curr_code_chunk_iter) {
-                codegen::code_chunk_shared_ptr_t curr_code_chunk = *curr_code_chunk_iter;
-
-                if (!curr_code_chunk->is_plug_) {
-                    std::pair<code_chunk2code_chunk_map_t::iterator, code_chunk2code_chunk_map_t::iterator> itp = dst2srcmap.equal_range(curr_code_chunk);
-                    for (std::multimap<codegen::code_chunk_shared_ptr_t, codegen::code_chunk_shared_ptr_t>::iterator it = itp.first; it != itp.second; ++it) {
-                        // result is in *it
-                        codegen::code_chunk_shared_ptr_t src_to_be_patched = it->second;
-                        src_to_be_patched->bytecode_ = instruction_index;
-                    }
-                } else {
-                    codegen::code_chunk_list_t::const_iterator iter = std::find(code_chunk_begin_iter, code_chunk_iter_end, curr_code_chunk->jump_dst_);
-                    assert(iter != code_chunk_iter_end);
-
-                    codegen::code_chunk_shared_ptr_t jump_dst =  *(++iter);
-                    dst2srcmap.insert(std::make_pair<codegen::code_chunk_shared_ptr_t, codegen::code_chunk_shared_ptr_t>(jump_dst, curr_code_chunk));
-                }
-
-                ++instruction_index;
-            }
-        }
-    }
-
-    void compiler::exec(const string &source, bool optimize, bool save_2_file, bool show, bool execute) {
+    void compiler::exec(const string &source, bool optimize, bool show, bool save_2_file, bool execute) {
 
         if (parse(source, the_parse_info)) {
             if (the_tree_analyzer.parse(the_parse_info.trees.begin())) {
                 const Runtime::constants_pool &the_constants_pool = the_tree_analyzer.get_parsed_constants_pool();
-                codegen::code_chunks_t &code_chunks = the_codegen.exec(the_parse_info.trees.begin(), the_tree_analyzer.get_parsed_funcs_list());
-
-                if (optimize) {
-                    //TODO:
-                }
-
-                jumps_resolve(code_chunks);
-
-                if (show) {
-                    std::cout << "bytecodes for compiled user functions:" << std::endl;
-                    //show bytecode for each user function
-                    for (codegen::code_chunks_t::const_iterator cur_user_func_iter = code_chunks.begin(), user_func_iter_end = code_chunks.end();
-                            cur_user_func_iter != user_func_iter_end;
-                            ++cur_user_func_iter
-                    )
-                    {
-                        for (codegen::code_chunk_list_t::const_iterator curr_code_chunk_iter = (*cur_user_func_iter).begin(), code_chunk_iter_end = (*cur_user_func_iter).end();
-                                curr_code_chunk_iter != code_chunk_iter_end;
-                        ++curr_code_chunk_iter)
-                        {
-                            std::cout << (signed int) (*curr_code_chunk_iter)->bytecode_ << " ";
-                        }
-                        std::cout << std::endl;
-                    }
-                }
+                const Runtime::program_entry the_program = the_codegen.exec(the_parse_info.trees.begin(), the_tree_analyzer.get_parsed_funcs_list(), the_constants_pool, optimize, show);
 
                 //TODO:
-                /*
-                if (is_save_to_file){
+                if (save_2_file or execute) {
 
+                    if (save_2_file) {
+                    }
+
+                    if (execute) {
+                        Runtime::freefoil_vm vm(the_program);
+                        vm.exec(1); //TODO: fix index of main function
+                    }
                 }
-
-                if (execute){
-
-                }
-                */
             }
         }
     }

@@ -65,26 +65,15 @@ namespace Freefoil {
     }
 #endif
 
-    void compiler::exec(const string &source, bool optimize, bool show, bool save_2_file, bool execute) {
+    Runtime::program_entry_shared_ptr compiler::exec(const string &source, bool optimize, bool show) {
 
         if (parse(source, the_parse_info)) {
             if (the_tree_analyzer.parse(the_parse_info.trees.begin())) {
                 const Runtime::constants_pool &the_constants_pool = the_tree_analyzer.get_parsed_constants_pool();
-                const Runtime::program_entry the_program = the_codegen.exec(the_parse_info.trees.begin(), the_tree_analyzer.get_parsed_funcs_list(), the_constants_pool, optimize, show);
-
-                //TODO:
-                if (save_2_file or execute) {
-
-                    if (save_2_file) {
-                    }
-
-                    if (execute) {
-                        Runtime::freefoil_vm vm(the_program);
-                        vm.exec(); //TODO: add sending params
-                    }
-                }
+                return the_codegen.exec(the_parse_info.trees.begin(), the_tree_analyzer.get_parsed_funcs_list(), the_constants_pool, optimize, show);
             }
         }
+        return Runtime::program_entry_shared_ptr();
     }
 
     bool compiler::parse(const std::string &program_source, tree_parse_info_t &result_info) {

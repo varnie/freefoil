@@ -159,7 +159,7 @@ namespace Freefoil {
 
         //TODO: add check that each func impl has "return stmt" in all "key points"
         //and other checks
-        if ((signed int)funcs_list_.size() > Runtime::max_byte_value) {
+        if (funcs_list_.size() > Runtime::max_uint_value) {
             print_error("user functions limit exceeded");
             ++errors_count_;
         }

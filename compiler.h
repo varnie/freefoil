@@ -21,13 +21,15 @@ namespace Freefoil {
         tree_analyzer the_tree_analyzer;
         codegen the_codegen;
 
+        Runtime::program_entry_shared_ptr program_entry_ptr_;
+
 #if defined(BOOST_SPIRIT_DUMP_PARSETREE_AS_XML)
         void dump_tree(const tree_parse_info_t &info) const;
 #endif
         bool parse(const string &program_source, tree_parse_info_t &result_info);
     public:
         compiler();
-        void exec(const string &source, bool optimize, bool show, bool save_2_file, bool execute);
+        Runtime::program_entry_shared_ptr exec(const string &source, bool optimize, bool show);
     };
 }
 

@@ -5,15 +5,20 @@
 #include <string>
 #include <cassert>
 
+#include <boost/shared_ptr.hpp>
+
 namespace Freefoil {
 
     namespace Runtime {
 
         using std::vector;
         using std::string;
+        using boost::shared_ptr;
 
         typedef signed char BYTE;
+        typedef std::size_t UINT;
         static const BYTE max_byte_value =  std::numeric_limits<BYTE>::max();
+        static const UINT max_uint_value = std::numeric_limits<UINT>::max();
 
         class constants_pool {
 
@@ -105,12 +110,14 @@ namespace Freefoil {
 
             function_templates_vector_t user_funcs_;
             constants_pool constants_pool_;
-            std::size_t entry_point_func_index_;
+            UINT entry_point_func_index_;
         public:
             program_entry(const function_templates_vector_t& user_funcs, const constants_pool &constants, const std::size_t entry_point_func_index)
                 :user_funcs_(user_funcs), constants_pool_(constants), entry_point_func_index_(entry_point_func_index)
                 {}
         };
+
+        typedef shared_ptr<program_entry> program_entry_shared_ptr;
     }
 }
 

@@ -1,4 +1,5 @@
 #include "compiler.h"
+#include "freefoil_vm.h"
 #include <string>
 #include <iostream>
 
@@ -22,7 +23,18 @@ int main() {
             break;
         }
 
-        c.exec(str, optimize, save_2_file, show, execute);
+        Freefoil::Runtime::program_entry_shared_ptr the_program = c.exec(str, optimize, show);
+        if (the_program){
+            //TODO:
+            if (save_2_file) {
+
+            }
+
+            if (execute) {
+                Freefoil::Runtime::freefoil_vm vm(*the_program.get());
+                vm.exec(); //TODO: add sending params
+            }
+        }
     }
 
     return 0;

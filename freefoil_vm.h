@@ -108,9 +108,9 @@ namespace Freefoil {
                         case OPCODE_iret:{  //return int
                             fp_ = (ULONG *) pop_memory();
                             pc_ = (BYTE *) pop_memory();
-                            //const ULONG retv = pop_long();
+                            const ULONG retv = pop_long();
                             sp_ = fp_;
-                            //push_long(retv);
+                            push_long(retv);
                             break;
                         }
                         case OPCODE_fret:{  //return float

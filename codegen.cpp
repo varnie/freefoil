@@ -57,7 +57,7 @@ namespace Freefoil {
         }
     }
 
-    Runtime::program_entry codegen::generate_program_entry(const Runtime::constants_pool &constants, bool show) const {
+    Runtime::program_entry_shared_ptr codegen::generate_program_entry(const Runtime::constants_pool &constants, bool show) const {
 
         assert(user_funcs_.size() == code_chunks_.size());
 
@@ -88,13 +88,14 @@ namespace Freefoil {
             ++function_index;
         }
 
-        return Runtime::program_entry(user_funcs_templates, constants, entry_point_func_index_);
+        return Runtime::program_entry_shared_ptr(new Runtime::program_entry(user_funcs_templates, constants, entry_point_func_index_));
     }
 
-    Runtime::program_entry codegen::exec(const iter_t &tree_top, const function_shared_ptr_list_t &user_funcs, const Runtime::constants_pool &constants, bool optimize, bool show) {
+    Runtime::program_entry_shared_ptr codegen::exec(const iter_t &tree_top, const function_shared_ptr_list_t &user_funcs, const Runtime::constants_pool &constants, bool optimize, bool show) {
 
         std::cout << "codegen begin" << std::endl;
 
+        code_chunks_.clear();
         user_funcs_ = user_funcs;
         function_shared_ptr_list_t::const_iterator entry_point_func_iter = std::find_if(
             user_funcs.begin(),

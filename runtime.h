@@ -15,10 +15,13 @@ namespace Freefoil {
         using std::string;
         using boost::shared_ptr;
 
-        typedef signed char BYTE;
-        typedef std::size_t UINT;
+        typedef unsigned char BYTE;
+        typedef unsigned short WORD;
+        typedef std::size_t ULONG;
+
         static const BYTE max_byte_value =  std::numeric_limits<BYTE>::max();
-        static const UINT max_uint_value = std::numeric_limits<UINT>::max();
+        static const WORD max_word_value = std::numeric_limits<WORD>::max();
+        static const ULONG max_long_value = std::numeric_limits<ULONG>::max();
 
         class constants_pool {
 
@@ -31,22 +34,22 @@ namespace Freefoil {
             string_table_t string_table_;
 
         public:
-            int get_index_of_string_constant(const std::string &str) const {
+            std::size_t get_index_of_string_constant(const std::string &str) const {
                 assert(std::count(string_table_.begin(), string_table_.end(), str) == 1);
                 return std::distance(string_table_.begin(), std::find(string_table_.begin(), string_table_.end(), str));
             }
 
-            int get_index_of_float_constant(const float f) const {
+            std::size_t get_index_of_float_constant(const float f) const {
                 assert(std::count(float_table_.begin(), float_table_.end(), f) == 1);
                 return std::distance(float_table_.begin(), std::find(float_table_.begin(), float_table_.end(), f));
             }
 
-            int get_index_of_int_constant(const int i) const {
+            std::size_t get_index_of_int_constant(const int i) const {
                 assert(std::count(int_table_.begin(), int_table_.end(), i) == 1);
                 return std::distance(int_table_.begin(), std::find(int_table_.begin(), int_table_.end(), i));
             }
 
-            int add_int_constant(const int i) {
+            std::size_t add_int_constant(const int i) {
                 if (std::count(int_table_.begin(), int_table_.end(), i) == 0) {
                     int_table_.push_back(i);
                     return int_table_.size() - 1;
@@ -55,7 +58,7 @@ namespace Freefoil {
                 }
             }
 
-            int add_float_constant(const float f) {
+            std::size_t add_float_constant(const float f) {
                 if (std::count(float_table_.begin(), float_table_.end(), f) == 0) {
                     float_table_.push_back(f);
                     return float_table_.size() - 1;
@@ -64,7 +67,7 @@ namespace Freefoil {
                 }
             }
 
-            int add_string_constant(const std::string &str) {
+            std::size_t add_string_constant(const std::string &str) {
                 if (std::count(string_table_.begin(), string_table_.end(), str) == 0) {
                     string_table_.push_back(str);
                     return string_table_.size() - 1;
@@ -110,9 +113,9 @@ namespace Freefoil {
 
             function_templates_vector_t user_funcs_;
             constants_pool constants_pool_;
-            UINT entry_point_func_index_;
+            ULONG entry_point_func_index_;
         public:
-            program_entry(const function_templates_vector_t& user_funcs, const constants_pool &constants, const std::size_t entry_point_func_index)
+            program_entry(const function_templates_vector_t& user_funcs, const constants_pool &constants, const ULONG entry_point_func_index)
                 :user_funcs_(user_funcs), constants_pool_(constants), entry_point_func_index_(entry_point_func_index)
                 {}
         };

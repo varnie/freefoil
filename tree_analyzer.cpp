@@ -14,6 +14,7 @@
 namespace Freefoil {
 
     using namespace Private;
+    using boost::bad_lexical_cast;
 
     static value_descriptor::E_VALUE_TYPE get_greater_type(value_descriptor::E_VALUE_TYPE value_type1, value_descriptor::E_VALUE_TYPE value_type2);
     static value_descriptor::E_VALUE_TYPE get_greatest_common_type(value_descriptor::E_VALUE_TYPE value_type1, value_descriptor::E_VALUE_TYPE value_type2);
@@ -51,7 +52,7 @@ namespace Freefoil {
                             boost::bind(&function_descriptor::get_param_descriptors_count, _1) != invoke_args_count
                            );
 
-        for (function_shared_ptr_list_t::iterator cur_iter = candidates_funcs.begin(); cur_iter != candidates_funcs.end();  ){
+        for (function_shared_ptr_list_t::iterator cur_iter = candidates_funcs.begin(); cur_iter != candidates_funcs.end();  ) {
 
             assert(invoke_args_count == (*cur_iter)->get_param_descriptors_count());
             const param_descriptors_shared_ptr_list_t &params_list = (*cur_iter)->get_param_descriptors();
@@ -62,16 +63,16 @@ namespace Freefoil {
                     break;
                 }
             }
-            if (is_valid){
+            if (is_valid) {
                 ++cur_iter;
-            }else{
+            } else {
                 cur_iter = candidates_funcs.erase(cur_iter);
             }
         }
 
-        if (candidates_funcs.size() != 1){
+        if (candidates_funcs.size() != 1) {
             return -1; //mark error
-        }else{
+        } else {
             return std::distance(funcs.begin(),
                                  std::find(funcs.begin(), funcs.end(), candidates_funcs.front())
                                 );
@@ -115,7 +116,7 @@ namespace Freefoil {
         //it is a time for parsing valid function's impls
         for (function_shared_ptr_list_t::const_iterator cur_iter = funcs_list_.begin(), iter_end = funcs_list_.end(); cur_iter != iter_end; ++cur_iter) {
             curr_parsing_function_ = *cur_iter;
-            if (curr_parsing_function_->has_body()) { //need
+            if (curr_parsing_function_->has_body()) { //needed
                 parse_func_body(curr_parsing_function_->get_body());
             }
         }
@@ -138,28 +139,28 @@ namespace Freefoil {
         //check that there's only one entry point function
         std::size_t entry_points_count = 0;
         cur_iter =funcs_list_.begin();
-        do{
+        do {
             cur_iter = std::find_if(
                            cur_iter,
                            iter_end,
                            boost::bind(&entry_point_functor, _1));
             if (cur_iter != iter_end) {
-               ++entry_points_count;
-               ++cur_iter;
+                ++entry_points_count;
+                ++cur_iter;
             }
         } while (cur_iter != iter_end);
 
-        if (entry_points_count == 0){
+        if (entry_points_count == 0) {
             print_error("entry point function not declared");
             ++errors_count_;
-        }else if (entry_points_count > 1){
+        } else if (entry_points_count > 1) {
             print_error("unable to overload entry point function");
             ++errors_count_;
         }
 
         //TODO: add check that each func impl has "return stmt" in all "key points"
         //and other checks
-        if (funcs_list_.size() > Runtime::max_uint_value) {
+        if (funcs_list_.size() > Runtime::max_long_value) {
             print_error("user functions limit exceeded");
             ++errors_count_;
         }
@@ -176,7 +177,7 @@ namespace Freefoil {
         return funcs_list_;
     }
 
-    const constants_pool &tree_analyzer::get_parsed_constants_pool() const{
+    const constants_pool &tree_analyzer::get_parsed_constants_pool() const {
 
         assert(errors_count_ == 0);
         return constants_pool_;
@@ -372,6 +373,7 @@ namespace Freefoil {
 
         const std::string var_type_as_str(parse_str(iter->children.begin()));
         value_descriptor::E_VALUE_TYPE var_type;
+
         //TODO: add checking for other possible types
         if (var_type_as_str == "string") {
             var_type = value_descriptor::stringType;
@@ -466,7 +468,7 @@ namespace Freefoil {
         case freefoil_grammar::stmt_end_ID: {
             break;
         }
-        case freefoil_grammar::func_call_ID:{
+        case freefoil_grammar::func_call_ID: {
             parse_func_call(iter);
             break;
         }
@@ -897,14 +899,28 @@ namespace Freefoil {
         assert(iter->value.id() == freefoil_grammar::number_ID);
 
         const std::string number_as_str(parse_str(iter));
-        if (number_as_str.find('.') != std::string::npos) {
-            //it is float value
-            const int index = constants_pool_.add_float_constant(boost::lexical_cast<float>(number_as_str));
-            create_attributes(iter, value_descriptor::floatType, index);
-        } else {
-            //it is int value
-            const int index = constants_pool_.add_int_constant(boost::lexical_cast<int>(number_as_str));
-            create_attributes(iter, value_descriptor::intType, index);
+
+        try {
+            if (number_as_str.find('.') != std::string::npos) {
+                //it is float value
+                std::size_t index = constants_pool_.add_float_constant(boost::lexical_cast<float>(number_as_str));
+                create_attributes(iter, value_descriptor::floatType, index);
+                if (index >= Runtime::max_word_value) {
+                    print_error(iter, "int values limit exceeded");
+                    ++errors_count_;
+                }
+            } else {
+                //it is int value
+                std::size_t index = constants_pool_.add_int_constant(boost::lexical_cast<int>(number_as_str));
+                create_attributes(iter, value_descriptor::intType, index);
+                if (index >= Runtime::max_word_value) {
+                    print_error(iter, "float values limit exceeded");
+                    ++errors_count_;
+                }
+            }
+        } catch (const bad_lexical_cast &e) {
+            print_error(iter, "wrong value");
+            ++errors_count_;
         }
     }
 
@@ -914,8 +930,13 @@ namespace Freefoil {
         const std::string quoted_string(parse_str(iter));
         const std::string str_value_without_quotes(quoted_string.begin() + 1, quoted_string.end() - 1);
 
-        const int index = constants_pool_.add_string_constant(str_value_without_quotes);
-        create_attributes(iter, value_descriptor::stringType, (int) index);
+        const std::size_t index = constants_pool_.add_string_constant(str_value_without_quotes);
+        create_attributes(iter, value_descriptor::stringType, index);
+
+        if (index >= Runtime::max_word_value) {
+            print_error(iter, "string values limit exceeded");
+            ++errors_count_;
+        }
     }
 
     void tree_analyzer::parse_func_body(const iter_t &iter) {

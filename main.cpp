@@ -19,15 +19,16 @@ int main() {
     string str;
 
     while (getline(std::cin, str)) {
+
         if (str == "q") {
             break;
         }
 
         Freefoil::Runtime::program_entry_shared_ptr the_program = c.exec(str, optimize, show);
         if (the_program){
-            //TODO:
-            if (save_2_file) {
 
+            if (save_2_file) {
+                //TODO:
             }
 
             if (execute) {

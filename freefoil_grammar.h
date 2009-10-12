@@ -77,6 +77,9 @@ namespace Freefoil {
                 ("not")
                 ("xor")
                 ("return")
+                ("if")
+                ("elsif")
+                ("else")
                 ;
             }
         };
@@ -124,6 +127,8 @@ namespace Freefoil {
                 or_xor_op_ID,
                 unary_plus_minus_op_ID,
                 return_stmt_ID,
+                if_stmt_ID,
+                bool_expr_in_parenthesis_ID,
             };
 
             template <typename ScannerT>
@@ -165,7 +170,7 @@ namespace Freefoil {
 
                     func_head = func_type >> expected_ident(ident) >> gen_pt_node_d[params_list];
 
-                    func_body = gen_ast_node_d[no_node_d[ch_p('{')] >> *stmt >> expected_closed_block(no_node_d[ch_p('}')])];
+                    func_body =  block;
 
                     func_type = keyword_p("string") | keyword_p("void") | keyword_p("float") | keyword_p("int") | keyword_p("bool");
 
@@ -224,7 +229,7 @@ namespace Freefoil {
                         | ident
                         | number
                         | quoted_string
-                        | no_node_d[ch_p('(')] >> gen_pt_node_d[bool_expr] >> expected_closed_bracket(no_node_d[ch_p(')')])
+                        | bool_expr_in_parenthesis
                         | bool_constant
                         ;
 
@@ -234,15 +239,22 @@ namespace Freefoil {
 
                     return_stmt = no_node_d[keyword_p("return")] >> !gen_pt_node_d[bool_expr] >> no_node_d[stmt_end];
 
+                    if_stmt = (no_node_d[keyword_p("if")] >> bool_expr_in_parenthesis >> gen_pt_node_d[block])
+                          >> *((no_node_d[keyword_p("elsif")]) >> bool_expr_in_parenthesis >> gen_pt_node_d[block])
+                          >> !((no_node_d[keyword_p("else")]) >> gen_pt_node_d[block]);
+
+                    bool_expr_in_parenthesis = no_node_d[ch_p('(')] >> gen_pt_node_d[bool_expr] >> expected_closed_bracket(no_node_d[ch_p(')')]);
+
                     stmt =
                         stmt_end |
                         var_declare_stmt_list |
                         func_call >> no_node_d[stmt_end] |
                         gen_pt_node_d[block] |
-                        gen_pt_node_d[return_stmt]
+                        gen_pt_node_d[return_stmt] |
+                        gen_pt_node_d[if_stmt]
+
                          //TODO: add other alternatives
                         ;
-
 
                     block = gen_ast_node_d[no_node_d[ch_p('{')] >> *stmt >> expected_closed_block(no_node_d[ch_p('}')])];
                 }
@@ -287,6 +299,8 @@ namespace Freefoil {
                 GRAMMAR_RULE(or_xor_op_ID) or_xor_op;
                 GRAMMAR_RULE(unary_plus_minus_op_ID) unary_plus_minus_op;
                 GRAMMAR_RULE(return_stmt_ID) return_stmt;
+                GRAMMAR_RULE(bool_expr_in_parenthesis_ID) bool_expr_in_parenthesis;
+                GRAMMAR_RULE(if_stmt_ID) if_stmt;
             };
         };
     }

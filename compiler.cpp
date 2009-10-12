@@ -57,6 +57,8 @@ namespace Freefoil {
         rule_names[freefoil_grammar::bool_constant_ID] = "bool_constant";
         rule_names[freefoil_grammar::unary_plus_minus_op_ID] = "unary_plus_minus_op";
         rule_names[freefoil_grammar::return_stmt_ID] = "return_stmt";
+        rule_names[freefoil_grammar::bool_expr_in_parenthesis_ID] = "bool_expr_in_parenthesis";
+        rule_names[freefoil_grammar::if_stmt_ID] = "if_stmt";
 
         tree_to_xml(std::cerr,
                     info.trees,

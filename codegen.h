@@ -78,7 +78,7 @@ namespace Freefoil {
              stack<jumps_t> true_jmps_, false_jmps_;
              code_chunks_t code_chunks_;
              function_shared_ptr_list_t user_funcs_;
-             Runtime::UINT entry_point_func_index_;
+             Runtime::ULONG entry_point_func_index_;
         };
     }
 }

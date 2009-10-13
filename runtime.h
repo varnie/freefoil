@@ -15,7 +15,7 @@ namespace Freefoil {
         using std::string;
         using boost::shared_ptr;
 
-        typedef unsigned char BYTE;
+        typedef signed char BYTE;
         typedef unsigned short WORD;
         typedef std::size_t ULONG;
 

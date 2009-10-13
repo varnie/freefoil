@@ -62,7 +62,8 @@ namespace Freefoil {
             void codegen_mult_divide_op(const iter_t &iter);
             void codegen_plus_minus_op(const iter_t &iter);
             void codegen_return_stmt(const iter_t &iter);
-
+            void codegen_if_stmt(const iter_t &iter);
+            void codegen_block(const iter_t &iter);
             void code_emit_branch(Runtime::BYTE opcode);
             void code_emit(Runtime::BYTE opcode);
             void code_emit(Runtime::BYTE opcode, Runtime::BYTE index);

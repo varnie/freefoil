@@ -59,6 +59,9 @@ namespace Freefoil {
         rule_names[freefoil_grammar::return_stmt_ID] = "return_stmt";
         rule_names[freefoil_grammar::bool_expr_in_parenthesis_ID] = "bool_expr_in_parenthesis";
         rule_names[freefoil_grammar::if_stmt_ID] = "if_stmt";
+        rule_names[freefoil_grammar::if_branch_ID] = "if_branch";
+        rule_names[freefoil_grammar::elsif_branch_ID] = "elsif_branch";
+        rule_names[freefoil_grammar::else_branch_ID] = "else_branch";
 
         tree_to_xml(std::cerr,
                     info.trees,

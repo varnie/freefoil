@@ -71,6 +71,8 @@ namespace Freefoil {
             void parse_mult_divide_op(const iter_t &iter);
             void parse_plus_minus_op(const iter_t &iter);
             void parse_return_stmt(const iter_t &iter);
+            void parse_if_stmt(const iter_t &iter);
+            void parse_block(const iter_t &iter);
             int find_function(const std::string &call_name, const std::vector<value_descriptor::E_VALUE_TYPE> &invoke_args, const function_shared_ptr_list_t &funcs) const;
             static void print_error(const iter_t &iter, const std::string &msg);
             static void print_error(const std::string &msg);

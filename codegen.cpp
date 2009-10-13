@@ -71,15 +71,15 @@ namespace Freefoil {
                 cur_user_func_iter != user_func_iter_end;
                 ++cur_user_func_iter
             ) {
-                Runtime::instructions_stream_t instructions;
-                instructions.reserve((*cur_user_func_iter).size());
+            Runtime::instructions_stream_t instructions;
+            instructions.reserve((*cur_user_func_iter).size());
             for (code_chunk_list_t::const_iterator curr_code_chunk_iter = (*cur_user_func_iter).begin(), code_chunk_iter_end = (*cur_user_func_iter).end();
                     curr_code_chunk_iter != code_chunk_iter_end;
                     ++curr_code_chunk_iter
                 ) {
                 instructions.push_back((*curr_code_chunk_iter)->bytecode_);
                 if (show) {
-                    std::cout << (signed int) (*curr_code_chunk_iter)->bytecode_ << " ";
+                    std::cout << (int) (*curr_code_chunk_iter)->bytecode_ << " ";
                 }
             }
             const function_shared_ptr_t &user_func = user_funcs_[function_index];
@@ -97,9 +97,9 @@ namespace Freefoil {
         code_chunks_.clear();
         user_funcs_ = user_funcs;
         function_shared_ptr_list_t::const_iterator entry_point_func_iter = std::find_if(
-            user_funcs.begin(),
-            user_funcs.end(),
-            boost::bind(&entry_point_functor, _1));
+                    user_funcs.begin(),
+                    user_funcs.end(),
+                    boost::bind(&entry_point_functor, _1));
         assert(entry_point_func_iter != user_funcs.end());
         entry_point_func_index_ = std::distance(user_funcs.begin(), entry_point_func_iter);
 
@@ -148,13 +148,13 @@ namespace Freefoil {
         codegen_func_body(iter->children.begin() + 1);
 
         assert(iter->value.value().get_value_type() != value_descriptor::undefinedType);
-        if (iter->value.value().get_value_type() == value_descriptor::voidType){
-            if (code_chunks_.back().empty() or code_chunks_.back().back()->bytecode_ != OPCODE_ret){
+        if (iter->value.value().get_value_type() == value_descriptor::voidType) {
+            if (code_chunks_.back().empty() or code_chunks_.back().back()->bytecode_ != OPCODE_ret) {
                 code_emit(OPCODE_ret);
             }
         }
 
-        if (code_chunks_.size() - 1 == entry_point_func_index_){
+        if (code_chunks_.size() - 1 == entry_point_func_index_) {
             code_emit(OPCODE_halt);
         }
     }
@@ -168,11 +168,20 @@ namespace Freefoil {
         }
     }
 
+    void codegen::codegen_block(const iter_t &iter) {
+
+        assert(iter->value.id() == freefoil_grammar::block_ID);
+
+        for (iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter) {
+            codegen_stmt(cur_iter);
+        }
+    }
+
     void codegen::codegen_stmt(const iter_t &iter) {
 
         switch (iter->value.id().to_long()) {
         case freefoil_grammar::block_ID: {
-            codegen_stmt(iter->children.begin());
+            codegen_block(iter);
             break;
         }
         case freefoil_grammar::var_declare_stmt_list_ID: {
@@ -190,10 +199,49 @@ namespace Freefoil {
             codegen_func_call(iter);
             break;
         }
+        case freefoil_grammar::if_stmt_ID: {
+            codegen_if_stmt(iter);
+            break;
+        }
         //TODO: check for other stmts
         default:
             break;
         }
+    }
+
+    void codegen::codegen_if_stmt(const iter_t &iter) {
+
+        assert(iter->value.id() == freefoil_grammar::if_stmt_ID);
+
+        true_jmps_.push(jumps_t());
+
+        for (iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter) {
+            if (cur_iter->value.id() != freefoil_grammar::else_branch_ID) {
+                assert(cur_iter->value.id() == freefoil_grammar::if_branch_ID or cur_iter->value.id() == freefoil_grammar::elsif_branch_ID);
+
+                false_jmps_.push(jumps_t());
+
+                codegen_bool_expr(cur_iter->children.begin());
+
+                code_emit_branch(OPCODE_jz /*jump if false*/);
+                false_jmps_.top().push_back(code_chunks_.back().back());
+
+                codegen_block(cur_iter->children.begin() + 1);
+
+                code_emit_branch(OPCODE_jmp /*unconditional jump*/);
+                true_jmps_.top().push_back(code_chunks_.back().back());
+
+                set_jumps_dsts(false_jmps_.top(), code_chunks_.back().back());
+
+                false_jmps_.pop();
+            }else{
+                codegen_block(cur_iter->children.begin());
+            }
+        }
+
+        set_jumps_dsts(true_jmps_.top(), code_chunks_.back().back());
+
+        true_jmps_.pop();
     }
 
     void codegen::codegen_return_stmt(const iter_t &iter) {

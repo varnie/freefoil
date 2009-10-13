@@ -129,6 +129,9 @@ namespace Freefoil {
                 return_stmt_ID,
                 if_stmt_ID,
                 bool_expr_in_parenthesis_ID,
+                if_branch_ID,
+                elsif_branch_ID,
+                else_branch_ID,
             };
 
             template <typename ScannerT>
@@ -239,9 +242,13 @@ namespace Freefoil {
 
                     return_stmt = no_node_d[keyword_p("return")] >> !gen_pt_node_d[bool_expr] >> no_node_d[stmt_end];
 
-                    if_stmt = (no_node_d[keyword_p("if")] >> bool_expr_in_parenthesis >> gen_pt_node_d[block])
-                          >> *((no_node_d[keyword_p("elsif")]) >> bool_expr_in_parenthesis >> gen_pt_node_d[block])
-                          >> !((no_node_d[keyword_p("else")]) >> gen_pt_node_d[block]);
+                    if_branch = (no_node_d[keyword_p("if")] >> bool_expr_in_parenthesis >> gen_pt_node_d[block]);
+                    elsif_branch = (no_node_d[keyword_p("elsif")]) >> bool_expr_in_parenthesis >> gen_pt_node_d[block];
+                    else_branch = ((no_node_d[keyword_p("else")]) >> gen_pt_node_d[block]);
+
+                    if_stmt = gen_pt_node_d[if_branch]
+                          >> *gen_pt_node_d[elsif_branch]
+                          >> !gen_pt_node_d[else_branch];
 
                     bool_expr_in_parenthesis = no_node_d[ch_p('(')] >> gen_pt_node_d[bool_expr] >> expected_closed_bracket(no_node_d[ch_p(')')]);
 
@@ -301,6 +308,9 @@ namespace Freefoil {
                 GRAMMAR_RULE(return_stmt_ID) return_stmt;
                 GRAMMAR_RULE(bool_expr_in_parenthesis_ID) bool_expr_in_parenthesis;
                 GRAMMAR_RULE(if_stmt_ID) if_stmt;
+                GRAMMAR_RULE(if_branch_ID) if_branch;
+                GRAMMAR_RULE(elsif_branch_ID) elsif_branch;
+                GRAMMAR_RULE(else_branch_ID) else_branch;
             };
         };
     }

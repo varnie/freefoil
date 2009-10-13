@@ -87,7 +87,7 @@ namespace Freefoil {
         return the_param_descriptor->get_name() == the_name;
     }
 
-    bool has_complete_returns(const iter_t &iter) {
+    bool tree_analyzer::has_complete_returns(const iter_t &iter) const{
 
         bool result = false;
 
@@ -98,6 +98,9 @@ namespace Freefoil {
         case freefoil_grammar::block_ID:
         case freefoil_grammar::func_body_ID:
             for (iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter) {
+                if (result){
+                    print_error(cur_iter, "possible, dead code detected");
+                }
                 result = result or has_complete_returns(cur_iter);
             }
             break;

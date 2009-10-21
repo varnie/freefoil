@@ -5,7 +5,7 @@
 #include <string>
 
 namespace Freefoil{
-	namespace Private{
+	namespace Runtime{
 		using std::runtime_error;
 		using std::string;
 

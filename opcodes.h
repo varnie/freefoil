@@ -7,12 +7,12 @@ namespace Freefoil {
         enum OPCODE_KIND {
 
             //variables load/store
-            OPCODE_ipush = 1, //pop next offset as address, and push integer value from stack by that address
-            OPCODE_fpush = 2, //pop next offset as address, and push float value from stack by that address
-            OPCODE_spush = 3, //pop next offset as address, and push string value from stack by that address
-            OPCODE_istore = 4, //pop the integer value from the top of stack; pop next offset and store to stacks's address by this offset
-            OPCODE_fstore = 5, //pop the float value from the top of stack; pop next offset and store to stacks's address by this offset
-            OPCODE_sstore = 6, //pop the string value from the top of stack; pop next offset and store to stacks's address by this offset
+            OPCODE_iload = 1, //pop next offset as address, and push integer value from stack by that address
+            OPCODE_fload = 2, //pop next offset as address, and push float value from stack by that address
+            OPCODE_sload = 3, //pop next offset as address, and push string value from stack by that address
+            OPCODE_isave = 4, //pop the integer value from the top of stack; pop next offset and store to stacks's address by this offset
+            OPCODE_fsave = 5, //pop the float value from the top of stack; pop next offset and store to stacks's address by this offset
+            OPCODE_ssave = 6, //pop the string value from the top of stack; pop next offset and store to stacks's address by this offset
 
             //constants load
             OPCODE_iload_const = 7, //pop next offset, push integer value from integer constants pool
@@ -24,46 +24,47 @@ namespace Freefoil {
             OPCODE_fadd = 11,
             OPCODE_sadd = 12, //str + str
 
-            OPCODE_negate = 13, //-
+            OPCODE_inegate = 13, //-
+            OPCODE_fnegate = 14,  //-
 
-            OPCODE_isub = 14,
-            OPCODE_fsub = 15,
+            OPCODE_isub = 15,
+            OPCODE_fsub = 16,
 
-            OPCODE_imul = 16,
-            OPCODE_fmul = 17,
+            OPCODE_imul = 17,
+            OPCODE_fmul = 18,
 
-            OPCODE_idiv = 18,
-            OPCODE_fdiv = 19,
+            OPCODE_idiv = 19,
+            OPCODE_fdiv = 20,
 
-            OPCODE_xor = 20,
+            OPCODE_xor = 21,
 
-            OPCODE_ifeq = 21,
-            OPCODE_ifneq = 22,
-            OPCODE_ifleq = 23,//<=
-            OPCODE_ifgeq = 24, //>=
-            OPCODE_ifgreater = 25,
-            OPCODE_ifless = 26,
+            OPCODE_ifeq = 22,
+            OPCODE_ifneq = 23,
+            OPCODE_ifleq = 24,//<=
+            OPCODE_ifgeq = 25, //>=
+            OPCODE_ifgreater = 26,
+            OPCODE_ifless = 27,
 
-            OPCODE_call = 27,
+            OPCODE_call = 28,
 
-            OPCODE_b2str = 28,
-            OPCODE_b2f = 29,
-            OPCODE_f2i = 30,
-            OPCODE_i2str = 31,
-            OPCODE_i2f = 32,
+            OPCODE_b2str = 29,
+            OPCODE_b2f = 30,
+            OPCODE_f2i = 31,
+            OPCODE_i2str = 32,
+            OPCODE_i2f = 33,
 
-            OPCODE_true = 33, //push 1 on top of stack
-            OPCODE_false = 34,//push 0 on top of stack
+            OPCODE_push_true = 34, //push 1 on top of stack
+            OPCODE_push_false = 35,//push 0 on top of stack
 
-            OPCODE_jz = 35, /*jump if false*/
-            OPCODE_jnz = 36, /*jump if true*/
-            OPCODE_jmp = 37, /*unconditional goto */
+            OPCODE_jz = 36, /*jump if false*/
+            OPCODE_jnz = 37, /*jump if true*/
+            OPCODE_jmp = 38, /*unconditional goto */
 
-            OPCODE_halt = 38,  //exit
-            OPCODE_ret = 39,   //return
-            OPCODE_iret = 40,  //return int
-            OPCODE_fret = 41,  //return float
-            OPCODE_sret = 42,  //return str
+            OPCODE_halt = 39,  //exit
+            OPCODE_ret = 40,   //return
+            OPCODE_iret = 41,  //return int
+            OPCODE_fret = 42,  //return float
+            OPCODE_sret = 43,  //return str
             //TODO: add other opcodes
         };
     }

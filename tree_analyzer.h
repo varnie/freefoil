@@ -27,14 +27,15 @@ namespace Freefoil {
 
         class tree_analyzer {
 
-            std::size_t errors_count_;
+            std::size_t errors_count_, warnings_count_;
 
             function_shared_ptr_list_t core_funcs_list_;
             function_shared_ptr_list_t funcs_list_;
-
-            typedef scoped_ptr<symbols_handler> symbols_handler_scoped_ptr;
-            symbols_handler_scoped_ptr symbols_handler_;
             function_shared_ptr_t curr_parsing_function_;
+
+            typedef symbols_handler<value_descriptor> descriptors_handler_t;
+            typedef scoped_ptr<descriptors_handler_t> descriptors_handler_scoped_ptr;
+            descriptors_handler_scoped_ptr descriptors_handler_;
 
             constants_pool constants_pool_;
 
@@ -73,8 +74,8 @@ namespace Freefoil {
             void parse_return_stmt(const iter_t &iter);
             void parse_if_stmt(const iter_t &iter);
             void parse_block(const iter_t &iter);
-            bool has_complete_returns(const iter_t &iter) const;
-            int find_function(const std::string &call_name, const std::vector<value_descriptor::E_VALUE_TYPE> &invoke_args, const function_shared_ptr_list_t &funcs) const;
+            bool has_complete_returns(const iter_t &iter);
+            std::ptrdiff_t find_function(const std::string &call_name, const std::vector<value_descriptor::E_VALUE_TYPE> &invoke_args, const function_shared_ptr_list_t &funcs) const;
             static void print_error(const iter_t &iter, const std::string &msg);
             static void print_error(const std::string &msg);
             static void create_attributes(const iter_t &iter, const value_descriptor::E_VALUE_TYPE value_type);

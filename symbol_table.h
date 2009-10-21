@@ -3,10 +3,8 @@
 
 #include <string>
 #include <vector>
-#include "value_descriptor.h"
 
 #include <boost/shared_ptr.hpp>
-#include <boost/scoped_ptr.hpp>
 
 namespace Freefoil {
     namespace Private {
@@ -14,11 +12,11 @@ namespace Freefoil {
         using std::string;
         using std::vector;
         using boost::shared_ptr;
-        using boost::scoped_ptr;
 
+        template <class value>
         class symbol_table {
 
-            const static size_t SIZE;
+            const static size_t SIZE = 256;
 
             class binding;
             typedef shared_ptr<binding> binding_shared_ptr;
@@ -28,18 +26,18 @@ namespace Freefoil {
             class binding {
                 friend class symbol_table;
                 string name_;
-                value_descriptor value_descriptor_;
+                value value_descriptor_;
                 binding_shared_ptr next_binding_;
             public:
-                binding(const string &the_name, const value_descriptor &the_value_descriptor, const binding_shared_ptr &the_next_binding)
-                        :name_(the_name), value_descriptor_(the_value_descriptor), next_binding_(the_next_binding) {   }
+                binding(const string &the_name, const value &the_value_descriptor, const binding_shared_ptr &the_next_binding)
+                        :name_(the_name), value_descriptor_(the_value_descriptor), next_binding_(the_next_binding)
+                        {}
             };
-
 
             static size_t hash(const string &the_string) {
                 size_t result = 0;
                 for (string::const_iterator cur_iter = the_string.begin(), iter_end = the_string.end(); cur_iter != iter_end; ++cur_iter) {
-                    result = result * 65599;
+                    result *= 65599;
                     result += static_cast<char>(*cur_iter);
                 }
                 return result;
@@ -53,13 +51,13 @@ namespace Freefoil {
                 }
             }
 
-            size_t insert(const string &the_name, const value_descriptor& the_value_descriptor) {
+            size_t insert(const string &the_name, const value& the_value_descriptor) {
                 const size_t index = hash(the_name) % SIZE;
                 bindings_[index] = binding_shared_ptr(new binding(the_name, the_value_descriptor, bindings_[index]));
                 return index;
             }
 
-            value_descriptor *lookup(const string &the_name) const {
+            value *lookup(const string &the_name) const {
 
                 const size_t index = hash(the_name) % SIZE;
                 for (binding_shared_ptr b = bindings_[index]; b != NULL; b = b->next_binding_){
@@ -74,8 +72,6 @@ namespace Freefoil {
                 bindings_[the_index] = (*bindings_[the_index]).next_binding_;
             }
         };
-
-        typedef scoped_ptr<symbol_table> symbol_table_scoped_ptr;
     }
 }
 

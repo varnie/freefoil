@@ -3,10 +3,17 @@
 
 #include "runtime.h"
 #include "opcodes.h"
-#include <cassert>
+#include "memory_manager.h"
+#include "exceptions.h"
 
+#include <iostream>
+#include <cassert>
+#include <string>
 #include <vector>
+#include <map>
+
 #include <boost/scoped_array.hpp>
+#include <boost/shared_ptr.hpp>
 
 namespace Freefoil {
 
@@ -15,32 +22,25 @@ namespace Freefoil {
         using namespace Private;
 
         using boost::scoped_array;
+        using boost::shared_ptr;
+
+        using std::map;
+        using std::string;
+
+        typedef memory_manager::gcobject_instance_t gcobject_instance_t;
+
+        extern memory_manager g_mm;
 
         class freefoil_vm {
 
-            struct stack_item {
-                typedef union value{
-                    int   i_;
-                    float f_;
-                    const char *pchar_;
-                    value(const int i):i_(i){}
-                    value(const float f):f_(f){}
-                    value(const char *pchar):pchar_(pchar){}
-                    value(){}
-                } value_t;
+            static const int i = 1;
+#define is_bigendian() ( (*(char*)&i) == 0 )
 
-                typedef enum E_TYPE {
-                    int_type,
-                    float_type,
-                    string_type,
-                } E_TYPE;
-                value_t value_;
-                E_TYPE type_;
-            public:
-                stack_item(const int i):value_(i), type_(int_type){}
-                stack_item(const float f):value_(f), type_(float_type){}
-                stack_item(const char *pchar):value_(pchar), type_(string_type){}
-                stack_item(){}
+            union stack_item {
+                stack_item *pstack_item_;
+                gcobject_instance_t gcobj_;
+                int   i_;
+                float f_;
             };
 
             const program_entry &program_;
@@ -56,10 +56,12 @@ namespace Freefoil {
             stack_item *fp_; //frame pointer
             ULONG *pMemory_sp_;
 
+            //bool is_big_endian;
+
             void init() {
                 pStack_.reset(new stack_item[STACK_SIZE]);
                 sp_ = fp_ = pStack_.get() + STACK_SIZE;
-                pMemory_.reset(new ULONG [STACK_SIZE]);
+                pMemory_.reset(new ULONG[STACK_SIZE]);
                 pMemory_sp_ = pMemory_.get() + STACK_SIZE;
             }
 
@@ -67,39 +69,38 @@ namespace Freefoil {
                 return sp_ - pStack_.get() >= size;
             }
 
-            void push_int(const int i){
+            void push_int(const int i) {
                 assert(check_room(1));
-                *--sp_ = stack_item(i);
+                (*--sp_).i_ = i;
             }
 
-            void push_float(const float f){
+            void push_float(const float f) {
                 assert(check_room(1));
-                *--sp_ = stack_item(f);
+                (*--sp_).f_ = f;
             }
 
-            void push_string(const char *pchar){
+            void push_gcobject(const gcobject_instance_t &gcobj) {
                 assert(check_room(1));
-                *--sp_ = stack_item(pchar);
+                (*--sp_).gcobj_ = gcobj;
             }
 
-            int pop_int(){
+            int pop_int() {
                 assert(sp_ >= pStack_.get());
-                assert(sp_->type_ == stack_item::int_type);
-                return (*sp_++).value_.i_;
+//                assert(sp_->type_ == int_type);
+                return (*sp_++).i_;
             }
 
-            float pop_float(){
+            float pop_float() {
                 assert(sp_ >= pStack_.get());
-                assert(sp_->type_ == stack_item::float_type);
-                return (*sp_++).value_.f_;
+//                assert(sp_->type_ == float_type);
+                return (*sp_++).f_;
             }
 
-            const char *pop_string(){
+            memory_manager::gcobject_instance_t pop_gcobject() {
                 assert(sp_ >= pStack_.get());
-                assert(sp_->type_ == stack_item::string_type);
-                return (*sp_++).value_.pchar_;
+                //assert(sp_->type_ == stack_item::string_type);
+                return (*sp_++).gcobj_;
             }
-
 
             void push_memory(ULONG memory) {
                 *--pMemory_sp_ = memory;
@@ -111,6 +112,11 @@ namespace Freefoil {
 
         public:
             freefoil_vm(const program_entry &program) : program_(program) {
+                /*
+                                 const short int word = 0x0001;
+                                 const char *byte = (char *) &word;
+                                 is_big_endian = !*byte;
+                */
             }
 
             ~freefoil_vm() {
@@ -128,84 +134,269 @@ namespace Freefoil {
                 push_memory((ULONG)fp_);
                 sp_ -= entry_point_func.locals_count_;
 
-                //           sp_ -= 1; //1 local
-                //           fp_ = sp_;
+                g_mm.function_begin();
 
-                while ((ip_ = *pc_++) != OPCODE_halt) {
-                    switch (ip_) {
-                    case OPCODE_call: {
-                        const BYTE user_func_index = *pc_;
-                        const BYTE *return_pc = ++pc_;
-                        push_memory((ULONG)return_pc);
-                        const stack_item *old_frame = sp_;
-                        push_memory((ULONG)old_frame);
-                        --sp_;
-                        fp_ = sp_;
-                        const function_template &f = program_.user_funcs_[user_func_index];
-                        const BYTE locals_count = f.locals_count_;
-                        check_room(locals_count);
-                        sp_ -= locals_count; //make room for local vars
-                        pc_ = &*f.instructions_.begin();    //advance pc_ to the function's first instruction
-                        break;
+                try {
+                    while ((ip_ = *pc_++) != OPCODE_halt) {
+                        switch (ip_) {
+
+                        case OPCODE_call: {
+                            const BYTE user_func_index = *pc_;
+                            const BYTE *return_pc = ++pc_;
+                            push_memory((ULONG)return_pc);
+                            const stack_item *old_frame = sp_;
+                            push_memory((ULONG)old_frame);
+                            --sp_;
+                            fp_ = sp_;
+                            const function_template &f = program_.user_funcs_[user_func_index];
+                            const BYTE locals_count = f.locals_count_;
+                            check_room(locals_count);
+                            sp_ -= locals_count; //make room for local vars
+                            pc_ = &*f.instructions_.begin();    //advance pc_ to the function's first instruction
+
+                            g_mm.function_begin();
+                            break;
+                        }
+
+                        case OPCODE_ret: {  //return void
+                            fp_ = (stack_item *)pop_memory();
+                            pc_ = (const BYTE *) pop_memory();
+                            sp_ = fp_; //restore old fp_
+
+                            g_mm.function_end();
+                            break;
+                        }
+
+                        case OPCODE_iret: { //return int
+                            fp_ = (stack_item *) pop_memory();
+                            pc_ = (const BYTE *) pop_memory();
+                            const int retv = pop_int();
+                            sp_ = fp_;
+                            push_int(retv);
+
+                            g_mm.function_end();
+                            break;
+                        }
+
+                        case OPCODE_fret: { //return float
+                            fp_ = (stack_item *) pop_memory();
+                            pc_ = (const BYTE *) pop_memory();
+                            const float retv = pop_float();
+                            sp_= fp_;
+                            push_float(retv);
+
+                            g_mm.function_end();
+                            break;
+                        }
+
+                        case OPCODE_sret: { //return string
+                            fp_ = (stack_item *) pop_memory();
+                            pc_ = (const BYTE *) pop_memory();
+                            const gcobject_instance_t gcobj = pop_gcobject();
+                            sp_ = fp_;
+                            push_gcobject(gcobj);
+
+                            g_mm.function_end();
+                            break;
+                        }
+
+                        case OPCODE_iload_const: {
+                            const BYTE int_constant_index = *pc_++;
+                            const int value = program_.constants_pool_.get_int_value_from_table(int_constant_index);
+                            push_int(value);
+                            break;
+                        }
+
+                        case OPCODE_fload_const: {
+                            const BYTE float_constant_index = *pc_++;
+                            const float value = program_.constants_pool_.get_float_value_from_table(float_constant_index);
+                            push_float(value);
+                            break;
+                        }
+
+                        case OPCODE_sload_const: {
+                            const BYTE string_constant_index = *pc_++;
+                            const std::string &value = program_.constants_pool_.get_string_value_from_table(string_constant_index);
+                            gcobject_instance_t gcobj = g_mm.sload(value);
+                            push_gcobject(gcobj);
+                            break;
+                        }
+
+                        case OPCODE_iload: {
+                            const BYTE variable_offset = *pc_++;
+                            push_int((*(fp_ + variable_offset)).i_);
+                            break;
+                        }
+
+                        case OPCODE_isave: {
+                            const int value = pop_int();
+                            const BYTE variable_offset = *pc_++;
+                            (*(fp_ + variable_offset)).i_ = value;
+                            break;
+                        }
+
+                        case OPCODE_fsave: {
+                            const float value = pop_float();
+                            const BYTE variable_offset = *pc_++;
+                            (*(fp_ + variable_offset)).i_ = value;
+                            break;
+                        }
+
+                        case OPCODE_ssave: {
+                            const gcobject_instance_t gcobj = pop_gcobject();
+                            const BYTE variable_offset = *pc_++;
+                            (*(fp_ + variable_offset)).gcobj_ = gcobj;
+                            break;
+                        }
+
+                        case OPCODE_fadd: {
+                            const float value2 = pop_float();
+                            push_float(pop_float() + value2);
+                            break;
+                        }
+
+                        case OPCODE_fmul: {
+                            const float value2 = pop_float();
+                            push_float(pop_float() * value2);
+                            break;
+                        }
+
+                        case OPCODE_fdiv: {
+                            const float value2 = pop_float();
+                            if (value2 == 0.0) {
+                                throw freefoil_exception("runtime exception: divizion by zero");
+                            }
+                            push_float(pop_float() / value2);
+                            break;
+                        }
+
+                        case OPCODE_fsub: {
+                            const float value2 = pop_float();
+                            push_float(pop_float() - value2);
+                            break;
+                        }
+
+                        case OPCODE_iadd: {
+                            const int value2 = pop_int();
+                            push_int(pop_int() + value2);
+                            break;
+                        }
+
+                        case OPCODE_imul: {
+                            const int value2 = pop_int();
+                            push_int(pop_int() * value2);
+                            break;
+                        }
+
+                        case OPCODE_idiv: {
+                            const int value2 = pop_int();
+                            if (value2 == 0) {
+                                throw freefoil_exception("runtime exception: divizion by zero");
+                            }
+                            push_float((float) (pop_int() / value2));
+                            break;
+                        }
+
+                        case OPCODE_isub: {
+                            const int value2 = pop_int();
+                            push_int(pop_int() - value2);
+                            break;
+                        }
+
+                        case OPCODE_sload: {
+                            const BYTE variable_offset = *pc_++;
+                            push_gcobject((*(fp_ + variable_offset)).gcobj_);
+                            std::cout << *((*sp_).gcobj_);
+                            break;
+                        }
+
+                        case OPCODE_sadd: {
+                            //const gcobject_instance_t gcobj1 = pop_gcobject();
+                            //const gcobject_instance_t gcobj2 = pop_gcobject();
+
+                            //    TODO
+                            break;
+                        }
+
+                        case OPCODE_inegate: {
+                            const int value = pop_int();
+                            push_int(- value);
+                            break;
+                        }
+
+                        case OPCODE_fnegate: {
+                            const float value = pop_float();
+                            push_float(- value);
+                            break;
+                        }
+
+                        case OPCODE_f2i: {
+                            //warning: possibly, information lost
+                            push_int(static_cast<int>(pop_float()));
+                            break;
+                        }
+
+                        case OPCODE_i2f: {
+                            push_float(pop_int());
+                            break;
+                        }
+
+                        case OPCODE_jmp: {
+                            const BYTE relative_offset = *pc_;
+                            pc_ += relative_offset;
+                            break;
+                        }
+
+                        case OPCODE_jnz: {  //jmp if true
+                            const int value = pop_int();
+                            assert(value == 0 or value == 1);
+                            if (value == 1){
+                                pc_ += *pc_;
+                            }else{
+                                ++pc_;
+                            }
+                            break;
+                        }
+
+                        case OPCODE_jz: { //jmp if false
+                            const int value = pop_int();
+                            assert(value == 0 or value == 1);
+                            if (value == 0){
+                                pc_ += *pc_;
+                            }else{
+                                ++pc_;
+                            }
+                            break;
+                        }
+
+                        case OPCODE_push_true: {
+                            push_int(1);
+                            break;
+                        };
+
+                        case OPCODE_push_false: {
+                            push_int(0);
+                            break;
+                        }
+
+                        default: {
+                            printf("wrong opcode: %d", ip_);
+                            break;
+                        }
+                        }
                     }
-                    case OPCODE_ret: {  //return void
-                        fp_ = (stack_item *)pop_memory();
-                        pc_ = (const BYTE *) pop_memory();
-                        sp_ = fp_; //restore old fp_
-                        break;
-                    }
-                    case OPCODE_iret: { //return int
-                        fp_ = (stack_item *) pop_memory();
-                        pc_ = (const BYTE *) pop_memory();
-                        const int retv = pop_int();
-                        sp_ = fp_;
-                        push_int(retv);
-                        break;
-                    }
-                    case OPCODE_fret: { //return float
-                        //TODO:
-                        break;
-                    }
-                    case OPCODE_sret: { //return string
-                        //TODO:
-                        break;
-                    }
-                    case OPCODE_iload_const: {
-                        const BYTE int_constant_index = *pc_++;
-                        const int value = program_.constants_pool_.get_int_value_from_table(int_constant_index);
-                        push_int(value);
-                        break;
-                    }
-                    case OPCODE_ipush: {
-                        const BYTE variable_offset = *pc_++;
-                        push_int((*(fp_ + variable_offset)).value_.i_);
-                        break;
-                    }
-                    case OPCODE_iadd: {
-                        const int value1 = pop_int();
-                        const int value2 = pop_int();
-                        push_int(value1 + value2);
-                        break;
-                    }
-                    case OPCODE_istore: {
-                        const BYTE variable_offset = *pc_++;
-                        const int value = pop_int();
-                        *(fp_ + variable_offset) = value;
-                        printf("value: %d", value);    //debug only
-                        break;
-                    }
-                    default: {
-                        printf("wrong opcode: %d", ip_);
-                        break;
-                    }
-                    }
+                } catch (const std::exception &e) {
+                    std::cout << e.what() << std::endl;
+                } catch (...) {
+                    std::cout << "unknown exception" << std::endl;
                 }
-            }
 
-            //TODO:
+                //TODO: g_mm.dealloc();
+            }
         };
 
     }
+
 }
 
 #endif // FREEFOIL_VM_H_INCLUDED

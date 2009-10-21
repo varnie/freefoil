@@ -24,21 +24,25 @@ namespace Freefoil {
         using boost::shared_ptr;
 
         class codegen {
-            class code_chunk;
-        public:
-            typedef shared_ptr<code_chunk> code_chunk_shared_ptr_t;
 
-            typedef struct code_chunk {
+            typedef struct codechunk {
                 Runtime::BYTE bytecode_;
+                int instruction_position_;  //absolute position, [0, ...)
                 bool is_plug_;  //to be patched later
-                code_chunk_shared_ptr_t jump_dst_; //if is_plug_ == true, then we must patch our bytecode_ with the address of an instruction following after the jump_dst_
-            } code_chunk_t;
+                const codechunk *jump_dst_; //if is_plug_ == true, then we must patch our bytecode_ with the address of an instruction following after the jump_dst_
+            } codechunk_t;
 
-            typedef vector<code_chunk_shared_ptr_t> jumps_t;
-            typedef list<code_chunk_shared_ptr_t> code_chunk_list_t;
-            typedef vector<code_chunk_list_t> code_chunks_t;
+            typedef shared_ptr<codechunk> codechunk_shared_ptr_t;
+            typedef vector<codechunk_shared_ptr_t> codechunks_pool_t;
+            codechunks_pool_t codechunks_pool_;
 
-        private:
+            typedef list<codechunk_t *> codechunk_list_t;
+            typedef vector<codechunk_list_t> codechunks_t;
+
+            codechunks_t codechunks_;
+            function_shared_ptr_list_t user_funcs_;
+            Runtime::ULONG entry_point_func_index_;
+
             void codegen_script(const iter_t &iter);
             void codegen_func_impl(const iter_t &iter);
             void codegen_func_body(const iter_t &iter);
@@ -69,17 +73,13 @@ namespace Freefoil {
             void code_emit(Runtime::BYTE opcode, Runtime::BYTE index);
             void code_emit_cast(value_descriptor::E_VALUE_TYPE src_type, value_descriptor::E_VALUE_TYPE cast_type);
             void code_emit_plug();
-            void set_jumps_dsts(vector<code_chunk_shared_ptr_t> &jumps_table, const code_chunk_shared_ptr_t &dst_code_chunk);
+            void set_jumps_dsts(vector<codechunk_t *> &jumps_table, const codechunk_t *dst_code_chunk);
+            void set_jmp_dst(codechunk_t *codechunk, const codechunk_t *dst_codechunk);
             void resolve_jumps();
             Runtime::program_entry_shared_ptr generate_program_entry(const Runtime::constants_pool &constants, bool show) const;
         public:
             codegen();
             Runtime::program_entry_shared_ptr exec(const iter_t &tree_top, const function_shared_ptr_list_t &user_funcs, const Runtime::constants_pool &constants, bool optimize, bool show);
-        private:
-             stack<jumps_t> true_jmps_, false_jmps_;
-             code_chunks_t code_chunks_;
-             function_shared_ptr_list_t user_funcs_;
-             Runtime::ULONG entry_point_func_index_;
         };
     }
 }

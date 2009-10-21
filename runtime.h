@@ -34,22 +34,22 @@ namespace Freefoil {
             string_table_t string_table_;
 
         public:
-            std::size_t get_index_of_string_constant(const std::string &str) const {
+            std::ptrdiff_t get_index_of_string_constant(const std::string &str) const {
                 assert(std::count(string_table_.begin(), string_table_.end(), str) == 1);
                 return std::distance(string_table_.begin(), std::find(string_table_.begin(), string_table_.end(), str));
             }
 
-            std::size_t get_index_of_float_constant(const float f) const {
+            std::ptrdiff_t get_index_of_float_constant(const float f) const {
                 assert(std::count(float_table_.begin(), float_table_.end(), f) == 1);
                 return std::distance(float_table_.begin(), std::find(float_table_.begin(), float_table_.end(), f));
             }
 
-            std::size_t get_index_of_int_constant(const int i) const {
+            std::ptrdiff_t get_index_of_int_constant(const int i) const {
                 assert(std::count(int_table_.begin(), int_table_.end(), i) == 1);
                 return std::distance(int_table_.begin(), std::find(int_table_.begin(), int_table_.end(), i));
             }
 
-            std::size_t add_int_constant(const int i) {
+            std::ptrdiff_t add_int_constant(const int i) {
                 if (std::count(int_table_.begin(), int_table_.end(), i) == 0) {
                     int_table_.push_back(i);
                     return int_table_.size() - 1;
@@ -58,7 +58,7 @@ namespace Freefoil {
                 }
             }
 
-            std::size_t add_float_constant(const float f) {
+            std::ptrdiff_t add_float_constant(const float f) {
                 if (std::count(float_table_.begin(), float_table_.end(), f) == 0) {
                     float_table_.push_back(f);
                     return float_table_.size() - 1;
@@ -67,7 +67,7 @@ namespace Freefoil {
                 }
             }
 
-            std::size_t add_string_constant(const std::string &str) {
+            std::ptrdiff_t add_string_constant(const std::string &str) {
                 if (std::count(string_table_.begin(), string_table_.end(), str) == 0) {
                     string_table_.push_back(str);
                     return string_table_.size() - 1;

@@ -3,6 +3,8 @@
 #include <string>
 #include <iostream>
 
+#include <boost/shared_ptr.hpp>
+
 using std::string;
 
 //TODO: parse program args

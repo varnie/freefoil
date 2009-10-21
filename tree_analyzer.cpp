@@ -39,6 +39,14 @@ namespace Freefoil {
             );
     }
 
+    bool function_has_no_body_functor(const function_shared_ptr_t &the_func) {
+        return 	!the_func->has_body();
+    }
+
+    bool param_descriptor_has_name_functor(const param_descriptor_shared_ptr_t &the_param_descriptor, const std::string &the_name) {
+        return the_param_descriptor->get_name() == the_name;
+    }
+
     //TODO: optimize
     int tree_analyzer::find_function(const std::string &call_name, const std::vector<value_descriptor::E_VALUE_TYPE> &invoke_args, const function_shared_ptr_list_t &funcs) const {
 
@@ -79,15 +87,7 @@ namespace Freefoil {
         }
     }
 
-    bool function_has_no_body_functor(const function_shared_ptr_t &the_func) {
-        return 	!the_func->has_body();
-    }
-
-    bool param_descriptor_has_name_functor(const param_descriptor_shared_ptr_t &the_param_descriptor, const std::string &the_name) {
-        return the_param_descriptor->get_name() == the_name;
-    }
-
-    bool tree_analyzer::has_complete_returns(const iter_t &iter) const{
+    bool tree_analyzer::has_complete_returns(const iter_t &iter) {
 
         bool result = false;
 
@@ -98,8 +98,9 @@ namespace Freefoil {
         case freefoil_grammar::block_ID:
         case freefoil_grammar::func_body_ID:
             for (iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter) {
-                if (result){
-                    print_error(cur_iter, "possible, dead code detected");
+                if (result) {
+                    print_error(cur_iter, "possible dead code detected");
+                    ++warnings_count_;
                 }
                 result = result or has_complete_returns(cur_iter);
             }
@@ -120,7 +121,7 @@ namespace Freefoil {
             }
             break;
         case freefoil_grammar::return_stmt_ID:
-            result = result or !iter->children.empty();
+            result = !iter->children.empty();
             break;
         default:
             break;
@@ -134,8 +135,7 @@ namespace Freefoil {
 
         std::cout << "analyze begin" << std::endl;
 
-        errors_count_ = 0;
-
+        errors_count_ = warnings_count_ = 0;
         funcs_list_.clear();
 
         const parser_id id = tree_top->value.id();
@@ -165,8 +165,8 @@ namespace Freefoil {
         }
 
         //now we have all user-defined functions parsed
-        function_shared_ptr_list_t::iterator  iter_begin = funcs_list_.begin(), iter_end = funcs_list_.end();
-        function_shared_ptr_list_t::iterator cur_iter = iter_begin;
+        function_shared_ptr_list_t::const_iterator  iter_begin = funcs_list_.begin(), iter_end = funcs_list_.end();
+        function_shared_ptr_list_t::const_iterator cur_iter = iter_begin;
         do {
             cur_iter = std::find_if(
                            cur_iter,
@@ -175,7 +175,6 @@ namespace Freefoil {
             if (cur_iter != iter_end) {
                 print_error("function " + (*cur_iter)->get_name() + " is not implemented");
                 ++errors_count_;
-
                 ++cur_iter;
             }
         } while (cur_iter != iter_end);
@@ -202,32 +201,23 @@ namespace Freefoil {
             ++errors_count_;
         }
 
-        //TODO: add check that each func impl has "return stmt" in all "key points"
         for (cur_iter = iter_begin; cur_iter != iter_end; ++cur_iter) {
             curr_parsing_function_ = *cur_iter;
-            if (curr_parsing_function_->has_body()) {
-                bool complete_returns_ways = false;
-                //parse_func_body(curr_parsing_function_->get_body());
-                if (curr_parsing_function_->get_type() == value_descriptor::voidType) {
-                    complete_returns_ways = true;
-                } else {
-                    complete_returns_ways = has_complete_returns(curr_parsing_function_->get_body());
-                }
-                if (!complete_returns_ways) {
-                    print_error("function " + curr_parsing_function_->get_name() + " has incomplete returns");
-                    ++errors_count_;
-                }
+            if (curr_parsing_function_->has_body() && curr_parsing_function_->get_type() != value_descriptor::voidType && !has_complete_returns(curr_parsing_function_->get_body())) {
+                print_error("function " + curr_parsing_function_->get_name() + " has incomplete returns");
+                ++errors_count_;
             }
         }
-
-        //TODO: and other checks
 
         if (funcs_list_.size() >= Runtime::max_long_value) {
             print_error("user functions limit exceeded");
             ++errors_count_;
         }
 
+        //TODO: and other checks
+
         std::cout << "errors: " << errors_count_ << std::endl;
+        std::cout << "warnings: " << warnings_count_ << std::endl;
         std::cout << "analyze end" << std::endl;
 
         return errors_count_ == 0;
@@ -253,7 +243,7 @@ namespace Freefoil {
         core_funcs_list_.push_back(function_shared_ptr_t (new function_descriptor("foo", value_descriptor::voidType, param_descriptors)));
     }
 
-    tree_analyzer::tree_analyzer() :errors_count_(0), symbols_handler_(NULL), curr_parsing_function_() {
+    tree_analyzer::tree_analyzer() :errors_count_(0), curr_parsing_function_(), descriptors_handler_(NULL) {
         setup_core_funcs();
     }
 
@@ -459,7 +449,7 @@ namespace Freefoil {
 
                 ++locals_count_;
 
-                if (!symbols_handler_->insert(var_name, value_descriptor(var_type, -locals_count_))) {
+                if (!descriptors_handler_->insert(var_name, value_descriptor(var_type, -locals_count_))) {
                     print_error(cur_iter->children.begin()->children.begin(), "redeclaration of variable " + var_name);
                     ++errors_count_;
                 }
@@ -502,7 +492,7 @@ namespace Freefoil {
                 }
 
                 const std::string var_name(parse_str(cur_iter->children.begin()));
-                symbols_handler_->insert(var_name, value_descriptor(var_type, -locals_count_));
+                descriptors_handler_->insert(var_name, value_descriptor(var_type, -locals_count_));
                 create_attributes(cur_iter->children.begin(), var_type, -locals_count_);
             }
         }
@@ -513,13 +503,13 @@ namespace Freefoil {
         assert(iter->value.id() == freefoil_grammar::block_ID);
 
         const Runtime::BYTE locals_count = locals_count_;
-        symbols_handler_->scope_begin();
+        descriptors_handler_->scope_begin();
 
         for (iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter) {
             parse_stmt(cur_iter);
         }
 
-        symbols_handler_->scope_end();
+        descriptors_handler_->scope_end();
         locals_count_ = locals_count;
     }
 
@@ -727,6 +717,10 @@ namespace Freefoil {
             }
             ++errors_count_;
         } else {
+            if (iter_value_type == value_descriptor::intType and parse_str(iter) == "/"){
+                iter_value_type = value_descriptor::floatType;
+            }
+
             if (iter_value_type != left_value_type) {
                 create_cast(left_iter, iter_value_type);
             }
@@ -834,7 +828,7 @@ namespace Freefoil {
         const string name(parse_str(iter));
         int stack_offset;
         value_descriptor::E_VALUE_TYPE value_type = value_descriptor::undefinedType;
-        const value_descriptor *the_value_descriptor = symbols_handler_->lookup(name);
+        const value_descriptor *the_value_descriptor = descriptors_handler_->lookup(name);
         if (the_value_descriptor != NULL) {
             value_type = the_value_descriptor->get_value_type();
             stack_offset = the_value_descriptor->get_stack_offset();
@@ -1035,14 +1029,14 @@ namespace Freefoil {
         assert(iter->value.id() == freefoil_grammar::func_body_ID);
         locals_count_ = 0;
 
-        symbols_handler_.reset(new symbols_handler);
-        symbols_handler_->scope_begin();
+        descriptors_handler_.reset(new descriptors_handler_t);
+        descriptors_handler_->scope_begin();
 
         for (iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter) {
             parse_stmt(cur_iter);
         }
 
-        symbols_handler_->scope_end();
+        descriptors_handler_->scope_end();
     }
 
     void tree_analyzer::print_error(const iter_t &iter, const std::string &msg) {

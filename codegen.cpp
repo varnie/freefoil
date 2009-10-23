@@ -504,8 +504,12 @@ namespace Freefoil {
             codegen_bool_expr(cur_iter);
         }
 
-        code_emit(OPCODE_call, iter->value.value().get_index());
-        //TODO: make distinguish between core and user functions calls
+        if (iter->value.value().get_func_kind() == node_attributes::BUILTIN_FUNC){
+            code_emit(OPCODE_builtin_call, iter->value.value().get_index());
+        }else{
+            assert(iter->value.value().get_func_kind() == node_attributes::USER_FUNC);
+            code_emit(OPCODE_call, iter->value.value().get_index());
+        }
     }
 
     void codegen::codegen_term(const iter_t &iter) {

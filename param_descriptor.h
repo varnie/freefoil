@@ -27,8 +27,7 @@ namespace Freefoil{
 				return is_ref_;
 			}
 		};
-		typedef shared_ptr<param_descriptor> param_descriptor_shared_ptr_t;
-		typedef vector<param_descriptor_shared_ptr_t> param_descriptors_shared_ptr_list_t;
+		typedef vector<param_descriptor> param_descriptors_t;
 	}
 }
 

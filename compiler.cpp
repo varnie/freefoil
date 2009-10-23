@@ -4,6 +4,7 @@
 #include "tree_analyzer.h"
 #include "codegen.h"
 #include "freefoil_vm.h"
+#include "runtime.h"
 
 #if defined(BOOST_SPIRIT_DUMP_PARSETREE_AS_XML)
 #include <boost/spirit/include/classic_tree_to_xml.hpp>
@@ -150,6 +151,5 @@ namespace Freefoil {
         return is_success;
     }
 
-    compiler::compiler() {
-    }
+    compiler::compiler(){}
 }

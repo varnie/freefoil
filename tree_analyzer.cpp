@@ -20,12 +20,17 @@ namespace Freefoil {
     static value_descriptor::E_VALUE_TYPE get_greatest_common_type(value_descriptor::E_VALUE_TYPE value_type1, value_descriptor::E_VALUE_TYPE value_type2);
     static bool is_assignable(value_descriptor::E_VALUE_TYPE left_value_type, value_descriptor::E_VALUE_TYPE right_value_type);
 
-    bool param_descriptors_types_equal_functor(const param_descriptor_shared_ptr_t &param_descriptor, const param_descriptor_shared_ptr_t &the_param_descriptor) {
-        return 	param_descriptor->get_value_type() == the_param_descriptor->get_value_type();
+    static void create_cast(const iter_t &iter, const value_descriptor::E_VALUE_TYPE cast_type);
+    static void create_attributes(const iter_t &iter, const node_attributes::E_FUNC_KIND func_kind);
+    static void create_attributes(const iter_t &iter, const value_descriptor::E_VALUE_TYPE value_type);
+    static void create_attributes(const iter_t &iter, const value_descriptor::E_VALUE_TYPE value_type, const int index);
+
+    bool param_descriptors_types_equal_functor(const param_descriptor &param_descriptor, const param_descriptor &the_param_descriptor) {
+        return 	param_descriptor.get_value_type() == the_param_descriptor.get_value_type();
     }
 
-    bool param_descriptors_refs_equal_functor(const param_descriptor_shared_ptr_t &param_descriptor, const param_descriptor_shared_ptr_t &the_param_descriptor) {
-        return 	param_descriptor->is_ref() == the_param_descriptor->is_ref();
+    bool param_descriptors_refs_equal_functor(const param_descriptor &param_descriptor, const param_descriptor &the_param_descriptor) {
+        return 	param_descriptor.is_ref() == the_param_descriptor.is_ref();
     }
 
     bool function_heads_equal_functor(const function_shared_ptr_t &func, const function_shared_ptr_t &the_func) {
@@ -33,18 +38,18 @@ namespace Freefoil {
             func->get_name() == the_func->get_name()
             &&  func->get_param_descriptors().size() == the_func->get_param_descriptors().size()
             &&  std::equal(
-                func->get_param_descriptors().begin(), func->get_param_descriptors().end(),
-                the_func->get_param_descriptors().begin(),
-                &param_descriptors_types_equal_functor
-            );
+                    func->get_param_descriptors().begin(), func->get_param_descriptors().end(),
+                    the_func->get_param_descriptors().begin(),
+                    &param_descriptors_types_equal_functor
+                );
     }
 
     bool function_has_no_body_functor(const function_shared_ptr_t &the_func) {
         return 	!the_func->has_body();
     }
 
-    bool param_descriptor_has_name_functor(const param_descriptor_shared_ptr_t &the_param_descriptor, const std::string &the_name) {
-        return the_param_descriptor->get_name() == the_name;
+    bool param_descriptor_has_name_functor(const param_descriptor &the_param_descriptor, const std::string &the_name) {
+        return the_param_descriptor.get_name() == the_name;
     }
 
     //TODO: optimize
@@ -60,13 +65,13 @@ namespace Freefoil {
                             boost::bind(&function_descriptor::get_param_descriptors_count, _1) != invoke_args_count
                            );
 
-        for (function_shared_ptr_list_t::iterator cur_iter = candidates_funcs.begin(); cur_iter != candidates_funcs.end();  ) {
+        for (function_shared_ptr_list_t::iterator cur_iter = candidates_funcs.begin(); cur_iter != candidates_funcs.end(); /*do nothing*/ ) {
 
             assert(invoke_args_count == (*cur_iter)->get_param_descriptors_count());
-            const param_descriptors_shared_ptr_list_t &params_list = (*cur_iter)->get_param_descriptors();
+            const param_descriptors_t &params_list = (*cur_iter)->get_param_descriptors();
             bool is_valid = true;
             for (int j = 0; j < invoke_args_count; ++j) {
-                if (!is_assignable(params_list[j]->get_value_type(), invoke_args[j])) {
+                if (!is_assignable(params_list[j].get_value_type(), invoke_args[j])) {
                     is_valid = false;
                     break;
                 }
@@ -77,6 +82,8 @@ namespace Freefoil {
                 cur_iter = candidates_funcs.erase(cur_iter);
             }
         }
+
+        //TODO:
 
         if (candidates_funcs.size() != 1) {
             return -1; //mark error
@@ -235,16 +242,28 @@ namespace Freefoil {
         return constants_pool_;
     }
 
-    void tree_analyzer::setup_core_funcs() {
+    void tree_analyzer::setup_builtin_funcs() {
 
-        //TODO: populate core_funcs_list_ with core functions
-        param_descriptors_shared_ptr_list_t param_descriptors;
-        param_descriptors.push_back(param_descriptor_shared_ptr_t(new param_descriptor(value_descriptor::intType, false, "i")));
-        core_funcs_list_.push_back(function_shared_ptr_t (new function_descriptor("foo", value_descriptor::voidType, param_descriptors)));
+        //TODO: populate builtin_funcs_list_ with more functions
+        param_descriptors_t param_descriptors_list;
+        param_descriptors_list.push_back(param_descriptor(value_descriptor::intType, false, "i"));
+        builtin_funcs_list_.push_back(function_shared_ptr_t(new function_descriptor("print", value_descriptor::voidType, param_descriptors_list)));
+
+        param_descriptors_list.clear();
+        param_descriptors_list.push_back(param_descriptor(value_descriptor::floatType, false, "f"));
+        builtin_funcs_list_.push_back(function_shared_ptr_t(new function_descriptor("print", value_descriptor::voidType, param_descriptors_list)));
+
+        param_descriptors_list.clear();
+        param_descriptors_list.push_back(param_descriptor(value_descriptor::boolType, false, "b"));
+        builtin_funcs_list_.push_back(function_shared_ptr_t(new function_descriptor("print", value_descriptor::voidType, param_descriptors_list)));
+
+        param_descriptors_list.clear();
+        param_descriptors_list.push_back(param_descriptor(value_descriptor::stringType, false, "s"));
+        builtin_funcs_list_.push_back(function_shared_ptr_t(new function_descriptor("print", value_descriptor::voidType, param_descriptors_list)));
     }
 
     tree_analyzer::tree_analyzer() :errors_count_(0), curr_parsing_function_(), descriptors_handler_(NULL) {
-        setup_core_funcs();
+        setup_builtin_funcs();
     }
 
     void tree_analyzer::parse_script(const iter_t &iter) {
@@ -325,7 +344,7 @@ namespace Freefoil {
         }
     }
 
-    param_descriptor_shared_ptr_t tree_analyzer::parse_func_param_descriptor(const iter_t &iter) {
+    param_descriptor tree_analyzer::parse_func_param_descriptor(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::param_ID);
 
@@ -361,15 +380,15 @@ namespace Freefoil {
             }
         }
         assert(cur_iter == iter_end);
-        return param_descriptor_shared_ptr_t(new param_descriptor(val_type, ++args_count_, val_name, is_ref));
+        return param_descriptor(val_type, ++args_count_, val_name, is_ref);
     }
 
-    param_descriptors_shared_ptr_list_t tree_analyzer::parse_func_param_descriptors_list(const iter_t &iter) {
+    param_descriptors_t tree_analyzer::parse_func_param_descriptors_list(const iter_t &iter) {
 
         assert(iter->value.id() == freefoil_grammar::params_list_ID);
 
         args_count_ = 0;
-        param_descriptors_shared_ptr_list_t param_descriptors_list;
+        param_descriptors_t param_descriptors_list;
         for (iter_t cur_iter = iter->children.begin(), iter_end = iter->children.end(); cur_iter != iter_end; ++cur_iter) {
             param_descriptors_list.push_back(parse_func_param_descriptor(cur_iter));
         }
@@ -399,7 +418,7 @@ namespace Freefoil {
             func_type = value_descriptor::boolType;
         }
 
-        param_descriptors_shared_ptr_list_t param_descriptors_list = parse_func_param_descriptors_list(iter->children.begin()+2);
+        param_descriptors_t param_descriptors_list = parse_func_param_descriptors_list(iter->children.begin()+2);
 
         if ((signed int) param_descriptors_list.size() >= Runtime::max_byte_value) {
             print_error(iter->children.begin()+2, "function params limit exceeded");
@@ -409,9 +428,9 @@ namespace Freefoil {
         const function_shared_ptr_t parsed_func = function_shared_ptr_t(new function_descriptor(parse_str(iter->children.begin()+1), func_type, param_descriptors_list));
 
         if (std::find_if(
-                    core_funcs_list_.begin(),
-                    core_funcs_list_.end(),
-                    boost::bind(&function_heads_equal_functor, _1, parsed_func)) != core_funcs_list_.end()) {
+                    builtin_funcs_list_.begin(),
+                    builtin_funcs_list_.end(),
+                    boost::bind(&function_heads_equal_functor, _1, parsed_func)) != builtin_funcs_list_.end()) {
             print_error(iter->children.begin(), "unable to override core function " + parsed_func->get_name());
             ++errors_count_;
         }
@@ -833,14 +852,14 @@ namespace Freefoil {
             value_type = the_value_descriptor->get_value_type();
             stack_offset = the_value_descriptor->get_stack_offset();
         } else {
-            const param_descriptors_shared_ptr_list_t::const_iterator suitable_param_descriptor_iter
+            const param_descriptors_t::const_iterator suitable_param_descriptor_iter
             = std::find_if(
                   curr_parsing_function_->get_param_descriptors().begin(),
                   curr_parsing_function_->get_param_descriptors().end(),
                   boost::bind(&param_descriptor_has_name_functor, _1, name));
             if (suitable_param_descriptor_iter != curr_parsing_function_->get_param_descriptors().end()) {
-                value_type = (*suitable_param_descriptor_iter)->get_value_type();
-                stack_offset = (*suitable_param_descriptor_iter)->get_stack_offset();
+                value_type = (*suitable_param_descriptor_iter).get_value_type();
+                stack_offset = (*suitable_param_descriptor_iter).get_stack_offset();
             } else {
                 //error. such variable is unknown
                 print_error(iter, "unknown ident " + name);
@@ -913,9 +932,11 @@ namespace Freefoil {
         int result = find_function(func_name, invoked_value_types, funcs_list_);
         if (result != -1) {
             create_attributes(iter, funcs_list_[result]->get_type(), result);
+            create_attributes(iter, node_attributes::USER_FUNC);
         } else {
-            if ((result = find_function(func_name, invoked_value_types, core_funcs_list_)) != -1) {
-                create_attributes(iter, core_funcs_list_[result]->get_type(), result);
+            if ((result = find_function(func_name, invoked_value_types, builtin_funcs_list_)) != -1) {
+                create_attributes(iter, builtin_funcs_list_[result]->get_type(), result);
+                create_attributes(iter, node_attributes::BUILTIN_FUNC);
             } else {
                 print_error(iter, "unable to call function " + func_name);
                 ++errors_count_;
@@ -1048,19 +1069,25 @@ namespace Freefoil {
         std::cout << msg << std::endl;
     }
 
-    void tree_analyzer::create_cast(const iter_t &iter, const value_descriptor::E_VALUE_TYPE cast_type) {
+    void create_cast(const iter_t &iter, const value_descriptor::E_VALUE_TYPE cast_type) {
         node_attributes tmp(iter->value.value());
         tmp.set_cast(cast_type);
         iter->value.value(tmp);
     }
 
-    void tree_analyzer::create_attributes(const iter_t &iter, const value_descriptor::E_VALUE_TYPE value_type) {
+    void create_attributes(const iter_t &iter, const node_attributes::E_FUNC_KIND func_kind) {
+        node_attributes tmp(iter->value.value());
+        tmp.set_func_kind(func_kind);
+        iter->value.value(tmp);
+    }
+
+    void create_attributes(const iter_t &iter, const value_descriptor::E_VALUE_TYPE value_type) {
         node_attributes tmp(iter->value.value());
         tmp.set_value_type(value_type);
         iter->value.value(tmp);
     }
 
-    void tree_analyzer::create_attributes(const iter_t &iter, const value_descriptor::E_VALUE_TYPE value_type, const int index) {
+    void create_attributes(const iter_t &iter, const value_descriptor::E_VALUE_TYPE value_type, const int index) {
         node_attributes tmp(iter->value.value());
         tmp.set_value_type(value_type);
         tmp.set_index(index);

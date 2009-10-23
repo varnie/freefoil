@@ -13,8 +13,8 @@ namespace Freefoil {
 
     using Private::function_shared_ptr_list_t;
     using Private::function_shared_ptr_t;
-    using Private::param_descriptors_shared_ptr_list_t;
-    using Private::param_descriptor_shared_ptr_t;
+    using Private::param_descriptors_t;
+    using Private::param_descriptor;
     using Private::iter_t;
     using Private::function_descriptor;
     using Private::OPCODE_KIND;
@@ -29,8 +29,7 @@ namespace Freefoil {
 
             std::size_t errors_count_, warnings_count_;
 
-            function_shared_ptr_list_t core_funcs_list_;
-            function_shared_ptr_list_t funcs_list_;
+            function_shared_ptr_list_t funcs_list_, builtin_funcs_list_;
             function_shared_ptr_t curr_parsing_function_;
 
             typedef symbols_handler<value_descriptor> descriptors_handler_t;
@@ -41,15 +40,15 @@ namespace Freefoil {
 
             Runtime::BYTE args_count_, locals_count_;
 
-            void setup_core_funcs();
+            void setup_builtin_funcs();
 
             void parse_script(const iter_t &iter);
             void parse_func_decl(const iter_t &iter);
             void parse_func_impl(const iter_t &iter);
             function_shared_ptr_t parse_func_head(const iter_t &iter);
             void parse_func_body(const iter_t &iter);
-            param_descriptors_shared_ptr_list_t parse_func_param_descriptors_list(const iter_t &iter);
-            param_descriptor_shared_ptr_t parse_func_param_descriptor(const iter_t &iter);
+            param_descriptors_t parse_func_param_descriptors_list(const iter_t &iter);
+            param_descriptor parse_func_param_descriptor(const iter_t &iter);
             void parse_stmt(const iter_t &iter);
             void parse_var_declare_stmt_list(const iter_t &iter);
             void parse_expr(const iter_t &iter);
@@ -78,9 +77,6 @@ namespace Freefoil {
             std::ptrdiff_t find_function(const std::string &call_name, const std::vector<value_descriptor::E_VALUE_TYPE> &invoke_args, const function_shared_ptr_list_t &funcs) const;
             static void print_error(const iter_t &iter, const std::string &msg);
             static void print_error(const std::string &msg);
-            static void create_attributes(const iter_t &iter, const value_descriptor::E_VALUE_TYPE value_type);
-            static void create_attributes(const iter_t &iter, const value_descriptor::E_VALUE_TYPE value_type, const int index);
-            static void create_cast(const iter_t &iter, const value_descriptor::E_VALUE_TYPE cast_type);
 
         public:
             tree_analyzer();

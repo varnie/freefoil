@@ -65,6 +65,8 @@ namespace Freefoil {
             OPCODE_iret = 41,  //return int
             OPCODE_fret = 42,  //return float
             OPCODE_sret = 43,  //return str
+
+            OPCODE_builtin_call = 44,
             //TODO: add other opcodes
         };
     }

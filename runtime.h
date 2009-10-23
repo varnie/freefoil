@@ -114,9 +114,10 @@ namespace Freefoil {
             function_templates_vector_t user_funcs_;
             constants_pool constants_pool_;
             ULONG entry_point_func_index_;
+            BYTE args_count_; //TODO:
         public:
-            program_entry(const function_templates_vector_t& user_funcs, const constants_pool &constants, const ULONG entry_point_func_index)
-                :user_funcs_(user_funcs), constants_pool_(constants), entry_point_func_index_(entry_point_func_index)
+            program_entry(const function_templates_vector_t& user_funcs, const constants_pool &constants, const ULONG entry_point_func_index, const BYTE args_count = 0)
+                :user_funcs_(user_funcs), constants_pool_(constants), entry_point_func_index_(entry_point_func_index), args_count_(args_count)
                 {}
         };
 

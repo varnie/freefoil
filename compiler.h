@@ -23,6 +23,8 @@ namespace Freefoil {
 
         Runtime::program_entry_shared_ptr program_entry_ptr_;
 
+        void init_builtin_funcs();
+
 #if defined(BOOST_SPIRIT_DUMP_PARSETREE_AS_XML)
         void dump_tree(const tree_parse_info_t &info) const;
 #endif

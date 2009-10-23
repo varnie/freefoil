@@ -23,13 +23,13 @@ namespace Freefoil {
         class function_descriptor {
             string name_;
             value_descriptor::E_VALUE_TYPE func_type_;
-            param_descriptors_shared_ptr_list_t param_descriptors_list_;
+            param_descriptors_t param_descriptors_;
             iter_t iter_body_;
             bool has_body_;
             Runtime::BYTE locals_count_;
         public:
-            function_descriptor(const string &name, const value_descriptor::E_VALUE_TYPE func_type, const param_descriptors_shared_ptr_list_t &param_descriptors_list = param_descriptors_shared_ptr_list_t())
-                    :name_(name), func_type_(func_type), param_descriptors_list_(param_descriptors_list), has_body_(false), locals_count_(0) {
+            function_descriptor(const string &name, const value_descriptor::E_VALUE_TYPE func_type, const param_descriptors_t &param_descriptors = param_descriptors_t())
+                    :name_(name), func_type_(func_type), param_descriptors_(param_descriptors), has_body_(false), locals_count_(0) {
             }
 
             const std::string &get_name() const {
@@ -38,8 +38,8 @@ namespace Freefoil {
             value_descriptor::E_VALUE_TYPE get_type() const {
                 return func_type_;
             }
-            const param_descriptors_shared_ptr_list_t &get_param_descriptors() const {
-                return param_descriptors_list_;
+            const param_descriptors_t &get_param_descriptors() const {
+                return param_descriptors_;
             }
 
             Runtime::BYTE get_locals_count() const{
@@ -47,7 +47,7 @@ namespace Freefoil {
             }
 
             Runtime::BYTE get_args_count() const{
-                return param_descriptors_list_.size();
+                return param_descriptors_.size();
             }
 
             bool has_body() const {
@@ -64,7 +64,7 @@ namespace Freefoil {
             }
 
             Runtime::BYTE get_param_descriptors_count() const {
-                return param_descriptors_list_.size();
+                return param_descriptors_.size();
             }
 
             void inc_locals_count(){

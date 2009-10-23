@@ -14,9 +14,18 @@ namespace Freefoil {
         using boost::scoped_ptr;
 
         class node_attributes {
+        public:
+            enum E_FUNC_KIND{
+                BUILTIN_FUNC,
+                USER_FUNC
+            };
+        private:
+            E_FUNC_KIND func_kind_;
             value_descriptor::E_VALUE_TYPE value_type_;
             value_descriptor::E_VALUE_TYPE cast_type_;
             int index_;
+            bool is_ref_;
+            bool lvalue_;
         public:
             node_attributes():value_type_(value_descriptor::undefinedType), cast_type_(value_descriptor::undefinedType) {}
 
@@ -34,6 +43,12 @@ namespace Freefoil {
             }
             void set_cast(const value_descriptor::E_VALUE_TYPE cast_type) {
                 cast_type_ = cast_type;
+            }
+            void set_func_kind(const E_FUNC_KIND func_kind) {
+                func_kind_ = func_kind;
+            }
+            E_FUNC_KIND get_func_kind() const{
+                return func_kind_;
             }
             value_descriptor::E_VALUE_TYPE get_cast() const {
                 return cast_type_;

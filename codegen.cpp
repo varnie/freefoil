@@ -89,6 +89,9 @@ namespace Freefoil {
             user_funcs_templates.push_back(Runtime::function_template(user_func->get_args_count(), user_func->get_locals_count(), instructions, user_func->get_type() == value_descriptor::voidType));
             ++function_index;
         }
+	if (show) {
+	    std::cout << std::endl;
+	}
 
         return Runtime::program_entry_shared_ptr(new Runtime::program_entry(user_funcs_templates, constants, entry_point_func_index_));
     }

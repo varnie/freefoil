@@ -64,34 +64,44 @@ namespace Freefoil {
                             boost::bind(&function_descriptor::get_name, _1) != call_name or
                             boost::bind(&function_descriptor::get_param_descriptors_count, _1) != invoke_args_count
                            );
-
-        for (function_shared_ptr_list_t::iterator cur_iter = candidates_funcs.begin(); cur_iter != candidates_funcs.end(); /*do nothing*/ ) {
-
-            assert(invoke_args_count == (*cur_iter)->get_param_descriptors_count());
+		        
+        int best_func_score = 0;
+        function_shared_ptr_t best_func = function_shared_ptr_t();
+        
+        for (function_shared_ptr_list_t::iterator cur_iter = candidates_funcs.begin(); cur_iter != candidates_funcs.end(); ++cur_iter){
+			assert(invoke_args_count == (*cur_iter)->get_param_descriptors_count());
             const param_descriptors_t &params_list = (*cur_iter)->get_param_descriptors();
-            bool is_valid = true;
-            for (int j = 0; j < invoke_args_count; ++j) {
-                if (!is_assignable(params_list[j].get_value_type(), invoke_args[j])) {
-                    is_valid = false;
-                    break;
-                }
-            }
-            if (is_valid) {
-                ++cur_iter;
-            } else {
-                cur_iter = candidates_funcs.erase(cur_iter);
-            }
-        }
-
-        //TODO:
-
-        if (candidates_funcs.size() != 1) {
-            return -1; //mark error
-        } else {
-            return std::distance(funcs.begin(),
-                                 std::find(funcs.begin(), funcs.end(), candidates_funcs.front())
-                                );
-        }
+            
+            int cur_func_score = 0;
+            for (int j = 0; j < invoke_args_count; ++j){
+				const value_descriptor::E_VALUE_TYPE val1 = params_list[j].get_value_type();
+				const value_descriptor::E_VALUE_TYPE val2 = invoke_args[j];
+				
+				if (val1 != val2){
+					if (val1 == value_descriptor::stringType or val1 == value_descriptor::boolType or val2 == value_descriptor::stringType or val2 == value_descriptor::boolType){
+						cur_func_score = -1;
+						break;		
+					} else {
+						++cur_func_score;
+					}
+				}
+			}
+			
+			if (cur_func_score != -1){
+				if (!best_func or cur_func_score < best_func_score){
+					best_func_score = cur_func_score;
+					best_func = *cur_iter;
+				}
+			}
+		}
+		
+		if (!best_func){
+			return -1; //no appropriate func found
+		} else{
+			return std::distance(funcs.begin(),
+									std::find(funcs.begin(), funcs.end(), best_func)
+								);
+		}
     }
 
     bool tree_analyzer::has_complete_returns(const iter_t &iter) {
@@ -429,7 +439,7 @@ namespace Freefoil {
 
         if (std::find_if(
                     builtin_funcs_list_.begin(),
-                    builtin_funcs_list_.end(),
+                    builtin_funcs_list_.end(),                                       
                     boost::bind(&function_heads_equal_functor, _1, parsed_func)) != builtin_funcs_list_.end()) {
             print_error(iter->children.begin(), "unable to override core function " + parsed_func->get_name());
             ++errors_count_;

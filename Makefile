@@ -5,7 +5,7 @@ INCDIRS   = -I${STANDARD_INC}
 CFLAGS    = ${INCDIRS}
 
 freefoil: main.o
-	$(CCC) ${CFLAGS} -o freefoil main.cpp compiler.cpp -I/usr/local/include/
+	$(CCC) ${CFLAGS} -o freefoil main.cpp compiler.cpp memory_manager.cpp tree_analyzer.cpp codegen.cpp -I/usr/local/include/
 all:
 	${MAKE} freefoil
 clean:

@@ -676,11 +676,17 @@ namespace Freefoil {
 
         iter_t left_iter = iter->children.begin();
         iter_t right_iter = left_iter + 1;
-
+        
         if (left_iter->value.id() == freefoil_grammar::plus_minus_op_ID) {
             parse_plus_minus_op(left_iter);
             create_attributes(iter, left_iter->value.value().get_value_type());
         } else {
+			if (left_iter->value.id() == freefoil_grammar::unary_plus_minus_op_ID){
+				++left_iter;
+				right_iter = left_iter + 1;
+			}
+			
+            assert(left_iter->value.id() == freefoil_grammar::term_ID);                  
             parse_term(left_iter);
         }
 

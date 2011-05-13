@@ -172,6 +172,7 @@ namespace Freefoil {
 
                 try {
                     while ((ip_ = *pc_++) != OPCODE_halt) {
+						
                         switch (ip_) {
 
                         case OPCODE_builtin_call: {
@@ -350,6 +351,7 @@ namespace Freefoil {
 
                         case OPCODE_idiv: {
                             const int value2 = pop_int();
+                            std::cout << value2 << std::endl;
                             if (value2 == 0) {
                                 throw freefoil_exception("runtime exception: divizion by zero");
                             }
@@ -405,8 +407,9 @@ namespace Freefoil {
 
                         case OPCODE_jnz: {  //jmp if true
                             const int value = pop_int();
-                            assert(value == 0 or value == 1);
+                            assert(value == 0 or value == 1);  
                             if (value == 1){
+								push_int(value);
                                 pc_ += *pc_;
                             }else{
                                 ++pc_;
@@ -418,6 +421,7 @@ namespace Freefoil {
                             const int value = pop_int();
                             assert(value == 0 or value == 1);
                             if (value == 0){
+								push_int(value);
                                 pc_ += *pc_;
                             }else{
                                 ++pc_;
@@ -496,6 +500,7 @@ namespace Freefoil {
                         }
                         }
                     }
+					
                 } catch (const std::exception &e) {
                     std::cout << e.what() << std::endl;
                 } catch (...) {

@@ -440,7 +440,7 @@ namespace Freefoil {
         case freefoil_grammar::bool_constant_ID:
             codegen_bool_constant(iter->children.begin());
             break;
-        case freefoil_grammar::bool_expr_in_parenthesis_ID:
+        case freefoil_grammar::bool_expr_ID:
             codegen_bool_expr(iter->children.begin());
             break;
         default:
@@ -655,9 +655,25 @@ namespace Freefoil {
         if (left_iter->value.id() == freefoil_grammar::plus_minus_op_ID) {
             codegen_plus_minus_op(left_iter);
         } else {
+			const bool has_unary_plus_minus = left_iter->value.id() == freefoil_grammar::unary_plus_minus_op_ID;
+			if (has_unary_plus_minus){
+				++left_iter;
+				right_iter = left_iter + 1;
+			}
+			
+            assert(left_iter->value.id() == freefoil_grammar::term_ID);     
             codegen_term(left_iter);
+            
+            if (has_unary_plus_minus){
+				if (left_iter->value.value().get_value_type() == value_descriptor::floatType) {
+					code_emit(OPCODE_fnegate);
+				} else {
+					assert(left_iter->value.value().get_value_type() == value_descriptor::intType);
+					code_emit(OPCODE_inegate);
+				}
+			}
         }
-
+		
         value_descriptor::E_VALUE_TYPE cast_type = get_cast(left_iter);
         if (cast_type != value_descriptor::undefinedType) {
             value_descriptor::E_VALUE_TYPE left_value_type = left_iter->value.value().get_value_type();
@@ -671,11 +687,10 @@ namespace Freefoil {
             value_descriptor::E_VALUE_TYPE right_value_type = right_iter->value.value().get_value_type();
             code_emit_cast(right_value_type, cast_type);
         }
-
+		
         value_descriptor::E_VALUE_TYPE value_type = iter->value.value().get_value_type();
-
+	
         if (parse_str(iter) == "+") {
-
             if (value_type == value_descriptor::floatType) {
                 code_emit(OPCODE_fadd);
             } else if (value_type == value_descriptor::intType || value_type == value_descriptor::boolType) {

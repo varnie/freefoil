@@ -19,14 +19,12 @@ int main() {
     Freefoil::compiler c;
 
     string str;
-
-    while (getline(std::cin, str)) {
-
-        if (str == "q") {
-            break;
-        }
-
-        Freefoil::Runtime::program_entry_shared_ptr the_program = c.exec(str, optimize, show);
+	
+	do {
+		std::cout << "please enter the program or press q to exit" << std::endl;
+		getline(std::cin, str);
+		
+		Freefoil::Runtime::program_entry_shared_ptr the_program = c.exec(str, optimize, show);
         if (the_program){
 
             if (save_2_file) {
@@ -36,9 +34,10 @@ int main() {
             if (execute) {
                 Freefoil::Runtime::freefoil_vm vm(*the_program.get());
                 vm.exec(); //TODO: add sending params
+                std::cout << std::endl;
             }
         }
-    }
-
+	} while (str != "q");
+	
     return 0;
 }

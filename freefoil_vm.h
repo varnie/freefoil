@@ -82,6 +82,10 @@ namespace Freefoil {
             void print_string(){
                 std::cout << *pop_gcobject();
             }
+            
+            void print_bool(){
+				std::cout << (pop_int() == 1 ? "true" : "false");
+			}
 
             void init() {
                 pStack_.reset(new stack_item[STACK_SIZE]);
@@ -91,7 +95,7 @@ namespace Freefoil {
 
                 builtin_funcs_.push_back(builtin_func_t(1, &freefoil_vm::print_int));
                 builtin_funcs_.push_back(builtin_func_t(1, &freefoil_vm::print_float));
-                builtin_funcs_.push_back(builtin_func_t(1, &freefoil_vm::print_int)); //print_bool == print_int
+                builtin_funcs_.push_back(builtin_func_t(1, &freefoil_vm::print_bool));
                 builtin_funcs_.push_back(builtin_func_t(1, &freefoil_vm::print_string));
                 //TODO: add others
             }

@@ -66,14 +66,6 @@ namespace Freefoil {
             memory_manager(const memory_manager&);
             memory_manager &operator=(const memory_manager&);
 
-            struct info {
-                std::size_t allocated_objects_;
-                std::size_t allocated_bytes_;
-                std::size_t deallocated_objects_;
-                std::size_t deallocated_bytes_;
-                info():allocated_objects_(0), allocated_bytes_(0), deallocated_objects_(0), deallocated_bytes_(0) {}
-            } info_;
-
         public:
             typedef gcobject *gcobject_instance_t;
         private:
@@ -88,7 +80,7 @@ namespace Freefoil {
                 return free(address);
             }
 
-            memory_manager():info_(info()) {}
+            memory_manager() {}
 
             gcobject_instance_t sload(const std::string &str){
                 //tries to estimate whether we have that string in data table or not
